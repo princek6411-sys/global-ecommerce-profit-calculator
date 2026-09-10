@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="E-commerce ROAS Calculator" description="Model advertising cost and profitability together to understand how ad spend affects return on investment."/>}

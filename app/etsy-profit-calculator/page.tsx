@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Etsy Profit Calculator" description="Estimate Etsy product profitability with editable marketplace and operating cost assumptions." platform="Etsy"/>}

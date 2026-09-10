@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="E-commerce Break-even Calculator" description="Estimate the minimum selling price needed to avoid a loss under your current cost assumptions."/>}

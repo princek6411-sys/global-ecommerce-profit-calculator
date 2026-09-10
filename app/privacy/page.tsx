@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function Page(){return <main className="container section"><div className="card panel" style={{maxWidth:800,margin:'40px auto'}}><span className="eyebrow">ProfitPilot</span><h1>Privacy</h1><p className="section-copy">This MVP page is a placeholder for production-ready privacy content. Keep this page clear, human-readable and aligned with your actual business practices.</p><Link className="btn primary" href="/">Back to calculator</Link></div></main>}

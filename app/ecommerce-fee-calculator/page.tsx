@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="E-commerce Fee Calculator" description="Model marketplace and payment fees alongside shipping, ads, returns and other costs."/>}

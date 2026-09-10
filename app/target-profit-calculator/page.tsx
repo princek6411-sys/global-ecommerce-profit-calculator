@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Target Profit Calculator" description="Enter your desired profit and estimate the selling price required under your current cost assumptions."/>}

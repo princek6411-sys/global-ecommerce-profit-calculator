@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Shopify Profit Calculator" description="Estimate Shopify store profit after product cost, payment fees, shipping, ads and other expenses." platform="Shopify"/>}

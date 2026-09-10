@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Amazon Profit Calculator" description="Estimate your Amazon product profit after cost, marketplace fees, payment, shipping, ads, returns and other expenses." platform="Amazon"/>}

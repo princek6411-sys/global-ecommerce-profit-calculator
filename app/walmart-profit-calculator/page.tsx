@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Walmart Profit Calculator" description="Estimate Walmart marketplace profit with transparent, editable assumptions." platform="Walmart"/>}

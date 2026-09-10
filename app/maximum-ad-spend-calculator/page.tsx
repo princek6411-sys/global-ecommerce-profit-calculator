@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="Maximum Ad Spend Calculator" description="Estimate the maximum advertising cost you can absorb before the product reaches zero profit."/>}

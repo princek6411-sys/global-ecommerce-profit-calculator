@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="TikTok Shop Profit Calculator" description="Estimate TikTok Shop profit with editable fee, shipping, advertising, affiliate and return assumptions." platform="TikTok Shop"/>}

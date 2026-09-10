@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="eBay Profit Calculator" description="Estimate eBay selling profit after fees, product cost, shipping, ads and returns." platform="eBay"/>}

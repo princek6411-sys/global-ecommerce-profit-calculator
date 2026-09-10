@@ -1,0 +1,1 @@
+import SEOPage from '@/app/seo-page'; export default function Page(){return <SEOPage title="E-commerce Profit Margin Calculator" description="Calculate estimated net profit margin after product, platform, payment, shipping, ads and other costs."/>}
