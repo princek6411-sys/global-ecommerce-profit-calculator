@@ -6,7 +6,7 @@ Next.js + TypeScript MVP/V2 for an e-commerce profit decision engine and seller 
 
 - True profit, margin, ROI and profit score
 - Good / Marginal / Not profitable decision engine
-- Country + currency + 6-language foundation
+- Country + operating/display currency + 6-language foundation
 - India, USA, Germany, France, Spain and Japan launch countries
 - Amazon, Flipkart, Meesho, TikTok Shop, Shopify, Etsy, eBay and Walmart architecture
 - Break-even, target-profit price, target-margin price and max ad spend
@@ -44,3 +44,9 @@ Platform fee numbers included in `lib/config.ts` are explicitly **example assump
 ## Privacy note
 
 The settlement analyzer processes uploaded CSV text locally in the browser in this MVP. No database is required for core calculations.
+
+## Supported launch currencies
+
+USD, EUR, INR, JPY, GBP, CAD, AUD, AED and SAR.
+
+Display currency is independent from the marketplace operating currency. Reference FX rates are fetched dynamically from the configured provider and cached locally for resilience; historical settlement conversion is treated separately from live display conversion.

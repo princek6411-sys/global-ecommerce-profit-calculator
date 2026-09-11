@@ -13,17 +13,20 @@ export type NormalizedTransaction = {
   taxes: number;
   other: number;
   netPayout: number;
+  expectedPayout: number;
+  settlementDifference: number;
 };
 
 export type CSVAnalysis = {
   transactions: NormalizedTransaction[];
   skuSummary: Array<NormalizedTransaction & { orders: number; profit: number; margin: number; deductions: number }>;
-  totals: { revenue: number; profit: number; deductions: number; orders: number };
+  totals: { revenue: number; profit: number; deductions: number; orders: number; expectedPayout: number; actualPayout: number; settlementDifference: number };
   deductionBuckets: Record<'fees' | 'shipping' | 'ads' | 'returns' | 'rto' | 'taxes' | 'other', number>;
   issues: string[];
 };
 
-const aliases: Record<keyof NormalizedTransaction, string[]> = {
+type SourceColumn = Exclude<keyof NormalizedTransaction, 'expectedPayout' | 'settlementDifference'>;
+const aliases: Record<SourceColumn, string[]> = {
   sku: ['sku', 'seller sku', 'product sku', 'item sku', 'merchant sku'],
   productName: ['product', 'product name', 'title', 'item title', 'product title', 'description'],
   orderId: ['order id', 'order_id', 'sub order id', 'sub-order id', 'order number'],
@@ -80,7 +83,7 @@ function findIndex(headers: string[], candidates: string[]) {
 }
 
 export function analyzeSettlementCSV(text: string): CSVAnalysis {
-  const empty = (): CSVAnalysis => ({ transactions: [], skuSummary: [], totals: { revenue: 0, profit: 0, deductions: 0, orders: 0 }, deductionBuckets: { fees: 0, shipping: 0, ads: 0, returns: 0, rto: 0, taxes: 0, other: 0 }, issues: [] });
+  const empty = (): CSVAnalysis => ({ transactions: [], skuSummary: [], totals: { revenue: 0, profit: 0, deductions: 0, orders: 0, expectedPayout: 0, actualPayout: 0, settlementDifference: 0 }, deductionBuckets: { fees: 0, shipping: 0, ads: 0, returns: 0, rto: 0, taxes: 0, other: 0 }, issues: [] });
   const result = empty();
   if (text.length > 8 * 1024 * 1024) { result.issues.push('CSV is larger than 8 MB. Split the report into smaller periods before analysis.'); return result; }
   const rows = parseCSVText(text);
@@ -109,8 +112,10 @@ export function analyzeSettlementCSV(text: string): CSVAnalysis {
     const marketplaceDeductions = fees + shipping + ads + returns + rto + taxes + other;
     // A provided payout is treated as the cash proceeds after marketplace deductions but before COGS.
     // When payout is unavailable, derive the same value from revenue minus known marketplace deductions.
-    const netPayout = Number.isFinite(payoutProvided) ? payoutProvided : revenue - marketplaceDeductions;
-    transactions.push({ sku: get('sku') || get('productName') || `ROW-${index + 2}`, productName: get('productName') || get('sku') || 'Unknown product', orderId: get('orderId') || `ROW-${index + 2}`, date: get('date'), revenue, cogs, fees, shipping, ads, returns, rto, taxes, other, netPayout });
+    const expectedPayout = revenue - marketplaceDeductions;
+    const netPayout = Number.isFinite(payoutProvided) ? payoutProvided : expectedPayout;
+    const settlementDifference = Number.isFinite(payoutProvided) ? netPayout - expectedPayout : 0;
+    transactions.push({ sku: get('sku') || get('productName') || `ROW-${index + 2}`, productName: get('productName') || get('sku') || 'Unknown product', orderId: get('orderId') || `ROW-${index + 2}`, date: get('date'), revenue, cogs, fees, shipping, ads, returns, rto, taxes, other, netPayout, expectedPayout, settlementDifference });
   });
 
   const map = new Map<string, NormalizedTransaction & { orders: number; profit: number; margin: number; deductions: number }>();
@@ -120,7 +125,7 @@ export function analyzeSettlementCSV(text: string): CSVAnalysis {
     const deductions = tx.fees + tx.shipping + tx.ads + tx.returns + tx.rto + tx.taxes + tx.other;
     const existing = map.get(key);
     if (!existing) map.set(key, { ...tx, orders: 1, profit, margin: 0, deductions });
-    else { existing.orders += 1; existing.profit += profit; existing.deductions += deductions; existing.revenue += tx.revenue; existing.cogs += tx.cogs; existing.netPayout += tx.netPayout; existing.fees += tx.fees; existing.shipping += tx.shipping; existing.ads += tx.ads; existing.returns += tx.returns; existing.rto += tx.rto; existing.taxes += tx.taxes; existing.other += tx.other; }
+    else { existing.orders += 1; existing.profit += profit; existing.deductions += deductions; existing.revenue += tx.revenue; existing.cogs += tx.cogs; existing.netPayout += tx.netPayout; existing.expectedPayout += tx.expectedPayout; existing.settlementDifference += tx.settlementDifference; existing.fees += tx.fees; existing.shipping += tx.shipping; existing.ads += tx.ads; existing.returns += tx.returns; existing.rto += tx.rto; existing.taxes += tx.taxes; existing.other += tx.other; }
   }
 
   const skuSummary = Array.from(map.values()).map((item) => ({ ...item, margin: item.revenue === 0 ? 0 : (item.profit / item.revenue) * 100 }));
@@ -129,7 +134,7 @@ export function analyzeSettlementCSV(text: string): CSVAnalysis {
   result.deductionBuckets = {
     fees: transactions.reduce((sum, x) => sum + x.fees, 0), shipping: transactions.reduce((sum, x) => sum + x.shipping, 0), ads: transactions.reduce((sum, x) => sum + x.ads, 0), returns: transactions.reduce((sum, x) => sum + x.returns, 0), rto: transactions.reduce((sum, x) => sum + x.rto, 0), taxes: transactions.reduce((sum, x) => sum + x.taxes, 0), other: transactions.reduce((sum, x) => sum + x.other, 0)
   };
-  result.totals = { revenue: transactions.reduce((sum, x) => sum + x.revenue, 0), profit: transactions.reduce((sum, x) => sum + x.netPayout - x.cogs, 0), deductions: Object.values(result.deductionBuckets).reduce((a, b) => a + b, 0), orders: transactions.length };
+  result.totals = { revenue: transactions.reduce((sum, x) => sum + x.revenue, 0), profit: transactions.reduce((sum, x) => sum + x.netPayout - x.cogs, 0), deductions: Object.values(result.deductionBuckets).reduce((a, b) => a + b, 0), orders: transactions.length, expectedPayout: transactions.reduce((sum, x) => sum + x.expectedPayout, 0), actualPayout: transactions.reduce((sum, x) => sum + x.netPayout, 0), settlementDifference: transactions.reduce((sum, x) => sum + x.settlementDifference, 0) };
   return result;
 }
 

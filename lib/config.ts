@@ -2,7 +2,7 @@ export type CurrencyCode = 'USD' | 'EUR' | 'INR' | 'JPY' | 'GBP' | 'CAD' | 'AUD'
 export type CountryCode = 'IN' | 'US' | 'DE' | 'FR' | 'ES' | 'JP';
 export type LanguageCode = 'en' | 'hi' | 'de' | 'fr' | 'es' | 'ja';
 export type Platform = 'Amazon' | 'Flipkart' | 'Meesho' | 'TikTok Shop' | 'Shopify' | 'Etsy' | 'eBay' | 'Walmart';
-export type FeeStatus = 'example' | 'official' | 'user-defined';
+export type FeeStatus = 'example' | 'official' | 'user-defined' | 'estimated' | 'unavailable' | 'stale';
 
 export type FeeAssumption = {
   value: number;

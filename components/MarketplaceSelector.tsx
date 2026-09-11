@@ -10,6 +10,7 @@ import { ChevronDown, Globe2 } from 'lucide-react';
 type Props = {
   country: CountryCode;
   currency: CurrencyCode;
+  operatingCurrency: CurrencyCode;
   language: LanguageCode;
   platform: Platform;
   onCountryChange: (country: CountryCode) => void;
@@ -62,9 +63,9 @@ export default function MarketplaceSelector(props: Props) {
         </div>
       </Popup>
 
-      <Popup label="Currency" open={currencyOpen} setOpen={setCurrencyOpen} value={<><span className="currency-glyph">{currentCurrency.symbol}</span><span>{props.currency}</span></>}>
-        <div className="selector-menu-heading">Choose currency</div>
-        <div className="selector-options" role="listbox" aria-label="Currency">
+      <Popup label="Display currency" open={currencyOpen} setOpen={setCurrencyOpen} value={<><span className="currency-glyph">{currentCurrency.symbol}</span><span>{props.currency}</span></>}>
+        <div className="selector-menu-heading">Display currency</div>
+        <div className="selector-options" role="listbox" aria-label="Display currency">
           {(Object.entries(currencies) as [CurrencyCode, typeof currencies[CurrencyCode]][]).map(([code, c]) => (
             <button key={code} type="button" role="option" aria-selected={code === props.currency} className={`selector-option compact ${code === props.currency ? 'selected' : ''}`} onClick={() => { props.onCurrencyChange(code); setCurrencyOpen(false); }}>
               <span className="currency-glyph">{c.symbol}</span><span><strong>{code}</strong><small>{c.label}</small></span>{code === props.currency && <span className="selector-check">✓</span>}
@@ -85,7 +86,7 @@ export default function MarketplaceSelector(props: Props) {
       </Popup>
 
       <div className="marketplace-context">
-        <span className="context-label">Marketplace</span>
+        <span className="context-label">Marketplace · operating currency {props.operatingCurrency}</span>
         <div className="marketplace-rail" role="listbox" aria-label="Marketplace">
           {platforms.map((p) => (
             <button key={p.platform} type="button" role="option" aria-selected={p.platform === props.platform} className={`marketplace-pill ${p.platform === props.platform ? 'selected' : ''}`} onClick={() => props.onPlatformChange(p.platform)} title={`${p.platform} · ${props.country}`}>

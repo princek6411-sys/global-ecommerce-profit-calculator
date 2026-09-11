@@ -106,3 +106,5 @@
 .brand-icon-wrap{display:inline-grid;place-items:center;position:relative;flex:0 0 auto;border-radius:9px;background:#fff;border:1px solid rgba(148,163,184,.34);box-shadow:0 5px 14px rgba(15,23,42,.06);overflow:hidden}
 .brand-icon-glyph{display:grid;place-items:center;opacity:.18;transform:translateY(1px)}
 .brand-icon-initial{position:absolute;font-size:11px;font-weight:950;letter-spacing:-.03em;line-height:1}
+
+.fx-context-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px;line-height:1.5}.fx-context-bar span{display:inline-flex;align-items:center;gap:4px}.fx-context-bar strong{color:#334155}.fx-context-bar .fx-rate{font-weight:900;color:#0f172a}.fx-context-bar .negative{color:#b42318}
