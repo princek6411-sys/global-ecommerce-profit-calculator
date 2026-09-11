@@ -1,0 +1,21 @@
+Visual Navigation + Localization Upgrade
+
+Implemented:
+- SVG country flag system using country-flag-icons
+- Centralized country/currency/language visual controls
+- Marketplace icon rail with accessible selected state
+- BrandIcon component using Simple Icons for supported brands with neutral fallback for Meesho/Own Store
+- Functional calculator icons using lucide-react
+- Country pills
+- Marketplace/country context in calculator comparison views
+- Mobile horizontal scrolling for rails/pills
+- Independent marketplace disclosure
+- Centralized/reusable icon components and CSS tokens
+- Accessibility labels/aria-selected/focus styling
+
+Dependencies added:
+- country-flag-icons 1.6.20
+- lucide-react 1.44.0
+- simple-icons 16.30.0
+
+Note: Full npm install/build was not run because node_modules are not present in the working environment and network installation is unavailable. Run npm install and npm run build after pushing to GitHub/Vercel.
