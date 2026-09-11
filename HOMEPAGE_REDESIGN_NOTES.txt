@@ -1,0 +1,26 @@
+Homepage Masterclass Redesign
+
+Modified:
+- app/page.tsx
+- app/globals.css
+
+Added:
+- components/HomeHeroDemo.tsx
+
+Highlights:
+- Problem-first hero: “Will your product actually make money?”
+- Interactive mini profit simulator using existing calculator engine
+- Visual revenue-to-profit “Aha” flow
+- Decision Engine showcase
+- What-if showcase
+- India marketplace spotlight
+- Global country chips
+- Seller Intelligence preview
+- Profit leak visualization
+- Premium CTA and navigation treatment
+- Responsive/mobile-first styling
+- Reduced-motion friendly CSS transitions; no new dependency added
+
+Validation:
+- TSX syntax transpilation check passed for updated page and new component.
+- Full npm install/build could not be completed because dependency installation timed out in the environment.

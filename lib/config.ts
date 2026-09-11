@@ -63,8 +63,8 @@ const example = (value: number): FeeAssumption => ({
 
 export const platformConfigs: PlatformConfig[] = [
   { platform: 'Amazon', countries: ['IN', 'US', 'DE', 'FR', 'ES', 'JP'], fee: example(15), description: 'Marketplace reach' },
-  { platform: 'Flipkart', countries: ['IN'], fee: { ...example(14), source: 'Flipkart Fees & Commission', sourceUrl: 'https://seller.flipkart.com/fees-and-commission', effectiveDate: '2026-09', lastVerified: '2026-09' }, description: 'India marketplace — helper models public fixed, collection and shipping components; category commission outside eligible zero-commission cases remains an example assumption' },
-  { platform: 'Meesho', countries: ['IN'], fee: { ...example(0), status: 'official', source: 'Meesho Supplier', sourceUrl: 'https://supplier.meesho.com/sell-online/shirts', effectiveDate: '2026-09', lastVerified: '2026-09' }, description: 'India social commerce — 0% commission; enter seller-specific shipping/other costs' },
+  { platform: 'Flipkart', countries: ['IN'], fee: example(14), description: 'India marketplace' },
+  { platform: 'Meesho', countries: ['IN'], fee: example(10), description: 'India social commerce' },
   { platform: 'TikTok Shop', countries: ['US', 'DE', 'FR', 'ES', 'JP'], fee: example(10), description: 'Social commerce' },
   { platform: 'Shopify', countries: ['IN', 'US', 'DE', 'FR', 'ES', 'JP'], fee: example(2.9), description: 'Owned storefront' },
   { platform: 'Etsy', countries: ['IN', 'US', 'DE', 'FR', 'ES', 'JP'], fee: example(6.5), description: 'Creative products' },

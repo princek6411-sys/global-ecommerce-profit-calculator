@@ -9,8 +9,6 @@ export type CalculatorInput = {
   quantity: number;
   productCost: number;
   platformFee: CostConfig;
-  marketplaceFixedFee: CostConfig;
-  collectionFee: CostConfig;
   paymentFee: CostConfig;
   shipping: CostConfig;
   packaging: CostConfig;
@@ -51,8 +49,6 @@ export function cost(base: number, c: CostConfig) {
 export function calculateRevenue(i: CalculatorInput) { return baseRevenue(i); }
 export function calculateProductCost(i: CalculatorInput) { return Math.max(0, safeNumber(i.productCost)) * safeQuantity(i.quantity); }
 export function calculatePlatformFee(i: CalculatorInput) { return cost(calculateRevenue(i), i.platformFee); }
-export function calculateMarketplaceFixedFee(i: CalculatorInput) { return cost(calculateRevenue(i), i.marketplaceFixedFee); }
-export function calculateCollectionFee(i: CalculatorInput) { return cost(calculateRevenue(i), i.collectionFee); }
 export function calculatePaymentFee(i: CalculatorInput) { return cost(calculateRevenue(i), i.paymentFee); }
 export function calculateShipping(i: CalculatorInput) { return cost(calculateRevenue(i), i.shipping); }
 export function calculatePackaging(i: CalculatorInput) { return cost(calculateRevenue(i), i.packaging); }
@@ -66,7 +62,7 @@ export function calculateOtherCosts(i: CalculatorInput) { return cost(calculateR
 
 export function calculateLineItems(i: CalculatorInput): ProfitLine {
   return {
-    revenue: calculateRevenue(i), product: calculateProductCost(i), platform: calculatePlatformFee(i), marketplaceFixed: calculateMarketplaceFixedFee(i), collection: calculateCollectionFee(i), payment: calculatePaymentFee(i), shipping: calculateShipping(i), packaging: calculatePackaging(i), advertising: calculateAdvertising(i), affiliate: calculateAffiliateCommission(i), discount: calculateDiscount(i), returns: calculateRefundAllowance(i), rto: calculateRTO(i), tax: calculateTax(i), other: calculateOtherCosts(i)
+    revenue: calculateRevenue(i), product: calculateProductCost(i), platform: calculatePlatformFee(i), payment: calculatePaymentFee(i), shipping: calculateShipping(i), packaging: calculatePackaging(i), advertising: calculateAdvertising(i), affiliate: calculateAffiliateCommission(i), discount: calculateDiscount(i), returns: calculateRefundAllowance(i), rto: calculateRTO(i), tax: calculateTax(i), other: calculateOtherCosts(i)
   };
 }
 
@@ -95,12 +91,12 @@ function fixedCost(c: CostConfig) {
 }
 
 function sumVariableRates(i: CalculatorInput, omitAdvertising = false) {
-  const list = [i.platformFee, i.marketplaceFixedFee, i.collectionFee, i.paymentFee, i.shipping, i.packaging, i.advertising, i.affiliate, i.discount, i.returns, i.rto, i.tax, i.other];
+  const list = [i.platformFee, i.paymentFee, i.shipping, i.packaging, i.advertising, i.affiliate, i.discount, i.returns, i.rto, i.tax, i.other];
   return list.reduce((sum, item) => sum + (omitAdvertising && item === i.advertising ? 0 : variableRate(item)), 0);
 }
 
 function fixedNonProductCosts(i: CalculatorInput, omitAdvertising = false) {
-  const list: CostConfig[] = [i.platformFee, i.marketplaceFixedFee, i.collectionFee, i.paymentFee, i.shipping, i.packaging, i.advertising, i.affiliate, i.discount, i.returns, i.rto, i.tax, i.other];
+  const list: CostConfig[] = [i.platformFee, i.paymentFee, i.shipping, i.packaging, i.advertising, i.affiliate, i.discount, i.returns, i.rto, i.tax, i.other];
   return list.reduce((sum, item) => sum + (omitAdvertising && item === i.advertising ? 0 : fixedCost(item)), 0);
 }
 
@@ -153,7 +149,7 @@ export function scoreProfit(i: CalculatorInput) {
   const roi = calculateROI(i);
   const revenue = calculateRevenue(i);
   const adBurden = revenue <= 0 ? 100 : (calculateAdvertising(i) / revenue) * 100;
-  const feeBurden = revenue <= 0 ? 100 : ((calculatePlatformFee(i) + calculateMarketplaceFixedFee(i) + calculateCollectionFee(i) + calculatePaymentFee(i)) / revenue) * 100;
+  const feeBurden = revenue <= 0 ? 100 : ((calculatePlatformFee(i) + calculatePaymentFee(i)) / revenue) * 100;
   const breakEven = calculateBreakEvenPrice(i);
   const sellingPrice = Math.max(0, safeNumber(i.sellingPrice));
   const buffer = revenue <= 0 || !Number.isFinite(breakEven) || sellingPrice <= 0 ? 0 : Math.max(0, ((sellingPrice - breakEven) / sellingPrice) * 100);
