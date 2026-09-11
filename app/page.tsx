@@ -67,9 +67,17 @@ export default function Home() {
           <div id="calculator" className="rounded-[28px] bg-[#111] p-5 text-white shadow-[0_30px_80px_rgba(0,0,0,.24)] md:p-6">
             <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-white/45">Live profit simulator</p><h2 className="mt-2 text-xl font-extrabold">What actually stays in your pocket?</h2></div><div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold">{indiaMode ? '🇮🇳 India Mode' : 'Global Mode'}</div></div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {[['Selling Price', price, setPrice], ['Product Cost', productCost, setProductCost], ['Ad Spend', ads, setAds], ['Shipping', shipping, setShipping]].map(([label, value, setter]) => (
-                <label key={String(label)} className="block"><span className="mb-2 block text-xs font-semibold text-white/55">{label}</span><input type="number" value={Number(value)} step="0.01" onChange={(e) => (setter as (n:number)=>void)(Number(e.target.value))} className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-bold outline-none transition focus:border-[#00C853]" /></label>
-              ))}
+              {[
+    ['Selling Price', price, setPrice],
+    ['Product Cost', productCost, setProductCost],
+    ['Ad Spend', ads, setAds],
+    ['Shipping', shipping, setShipping],
+  ] as any).map(([label, value, setter]: any) => (
+    <label key={String(label)} className="block">
+      <span className="mb-2 block text-xs font-semibold text-white/55">{String(label)}</span>
+      <input type="number" value={value as number} onChange={(e)=> (setter as any)(Number(e.target.value))} className="w-full rounded-lg border bg-white px-3 py-2 text-black" />
+    </label>
+  ))}
             </div>
             <div className="mt-5 grid grid-cols-3 gap-3">
               <Metric label="Fees" value="$5.00" />
