@@ -101,3 +101,8 @@
 @media(max-width:640px){.localization-controls{grid-template-columns:1fr 1fr;padding:10px}.visual-selector-menu{left:0;right:auto;min-width:min(310px,calc(100vw - 36px));max-height:60vh}.marketplace-context{grid-column:1/-1}.marketplace-pill{padding:9px 10px}.flag-svg{width:22px;height:15px}.tool-card{grid-template-columns:auto 1fr}}
 @media(prefers-reduced-motion:reduce){.visual-selector-trigger,.marketplace-pill,.country-pill{transition:none}}
 .compare-platform-name,.compare-country-name{display:flex;align-items:center;gap:8px}.compare-platform-name .brand-icon,.compare-country-name .flag-svg{flex:0 0 auto}
+
+/* Build-safe marketplace brand marks: functional glyph + visible initial. */
+.brand-icon-wrap{display:inline-grid;place-items:center;position:relative;flex:0 0 auto;border-radius:9px;background:#fff;border:1px solid rgba(148,163,184,.34);box-shadow:0 5px 14px rgba(15,23,42,.06);overflow:hidden}
+.brand-icon-glyph{display:grid;place-items:center;opacity:.18;transform:translateY(1px)}
+.brand-icon-initial{position:absolute;font-size:11px;font-weight:950;letter-spacing:-.03em;line-height:1}

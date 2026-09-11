@@ -1,52 +1,76 @@
 'use client';
 
-import { siAmazon, siEtsy, siEbay, siFlipkart, siShopify, siTiktok, siWalmart } from 'simple-icons';
+import {
+  Building2,
+  Globe2,
+  ShoppingBag,
+  ShoppingCart,
+  Store,
+} from 'lucide-react';
 import type { Platform } from '@/lib/config';
 
-type BrandIconProps = { platform: Platform; size?: number; className?: string; label?: string };
+type BrandName = Platform | 'Own Store';
 
-type SimpleIcon = { title: string; path: string };
-
-const icons: Partial<Record<Platform, SimpleIcon>> = {
-  Amazon: siAmazon,
-  Flipkart: siFlipkart,
-  'TikTok Shop': siTiktok,
-  Shopify: siShopify,
-  Etsy: siEtsy,
-  eBay: siEbay,
-  Walmart: siWalmart,
+type BrandIconProps = {
+  platform: BrandName;
+  size?: number;
+  className?: string;
+  label?: string;
 };
 
-const colors: Partial<Record<Platform, string>> = {
+const colors: Partial<Record<BrandName, string>> = {
   Amazon: '#111111',
   Flipkart: '#2874F0',
+  Meesho: '#c43dff',
   'TikTok Shop': '#111111',
   Shopify: '#95BF47',
   Etsy: '#F1641E',
   eBay: '#0064D2',
   Walmart: '#0071CE',
-  Meesho: '#c43dff',
+  'Own Store': '#16a34a',
 };
 
+const initials: Partial<Record<BrandName, string>> = {
+  Amazon: 'A',
+  Flipkart: 'F',
+  Meesho: 'M',
+  'TikTok Shop': 'T',
+  Shopify: 'S',
+  Etsy: 'E',
+  eBay: 'e',
+  Walmart: 'W',
+  'Own Store': 'OS',
+};
+
+function PlatformGlyph({ platform, size }: { platform: BrandName; size: number }) {
+  const strokeWidth = Math.max(1.7, Math.min(2.2, size / 12));
+  const props = { size, strokeWidth, 'aria-hidden': true as const };
+
+  if (platform === 'Own Store') return <Store {...props} />;
+  if (platform === 'Shopify' || platform === 'Etsy') return <ShoppingBag {...props} />;
+  if (platform === 'eBay' || platform === 'Walmart') return <ShoppingCart {...props} />;
+  if (platform === 'TikTok Shop') return <Globe2 {...props} />;
+  if (platform === 'Flipkart' || platform === 'Meesho') return <Building2 {...props} />;
+  return null;
+}
+
 export default function BrandIcon({ platform, size = 24, className = '', label }: BrandIconProps) {
-  const icon = icons[platform];
-  if (!icon) {
-    return <span className={`brand-icon-fallback ${className}`} style={{ width: size, height: size }} aria-hidden="true">{platform === 'Meesho' ? 'M' : platform === 'Own Store' ? 'OS' : platform.slice(0, 1)}</span>;
-  }
+  const color = colors[platform] ?? 'currentColor';
+  const initial = initials[platform] ?? platform.slice(0, 1);
+  const labelled = Boolean(label);
+
   return (
-    <svg
-      className={`brand-icon ${className}`}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      role={label ? 'img' : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      focusable="false"
-      style={{ color: colors[platform] ?? 'currentColor' }}
+    <span
+      className={`brand-icon-wrap ${className}`}
+      role={labelled ? 'img' : undefined}
+      aria-label={labelled ? label : undefined}
+      aria-hidden={labelled ? undefined : true}
+      style={{ width: size, height: size, color }}
     >
-      <path d={icon.path} />
-    </svg>
+      <span className="brand-icon-glyph" aria-hidden="true">
+        <PlatformGlyph platform={platform} size={Math.max(14, Math.round(size * 0.62))} />
+      </span>
+      <span className="brand-icon-initial" aria-hidden="true">{initial}</span>
+    </span>
   );
 }
