@@ -2,24 +2,67 @@ import Link from 'next/link';
 import Calculator from '@/components/Calculator';
 
 const tools = [
-  ['Profit Margin Calculator','/profit-margin-calculator/'],['Break-even Calculator','/break-even-calculator/'],['ROAS Calculator','/roas-calculator/'],['Maximum Ad Spend Calculator','/maximum-ad-spend-calculator/'],['Target Profit Calculator','/target-profit-calculator/'],['E-commerce Fee Calculator','/ecommerce-fee-calculator/']
+  ['Profit Margin Calculator', '/profit-margin-calculator/'],
+  ['Break-even Calculator', '/break-even-calculator/'],
+  ['ROAS Calculator', '/roas-calculator/'],
+  ['Maximum Ad Spend Calculator', '/maximum-ad-spend-calculator/'],
+  ['Target Profit Calculator', '/target-profit-calculator/'],
+  ['E-commerce Fee Calculator', '/ecommerce-fee-calculator/']
 ];
 
 export default function Home() {
   return <>
-    <header className="site-header"><div className="container nav"><Link className="brand" href="/">ProfitPilot</Link><nav className="nav-links"><a href="#calculator">Calculator</a><a href="#compare">Compare</a><a href="#feedback">Feedback</a><Link href="/roadmap">Roadmap</Link></nav></div></header>
+    <header className="site-header">
+      <div className="container nav">
+        <Link className="brand" href="/">ProfitPilot</Link>
+        <nav className="nav-links" aria-label="Primary navigation">
+          <a href="#calculator">Calculator</a><a href="#features">Features</a><a href="#feedback">Feedback</a><Link href="/roadmap">Roadmap</Link>
+        </nav>
+      </div>
+    </header>
+
     <main>
-      <section className="container hero"><div><span className="eyebrow">Global e-commerce decision tool</span><h1>Know Your REAL E-commerce Profit</h1><p className="lede">Calculate platform fees, product costs, shipping, advertising, affiliate commissions, returns and more to estimate what you actually keep.</p><div className="cta-row"><a className="btn primary" href="#calculator">Calculate My Profit</a><a className="btn secondary" href="#compare">Compare Platforms</a></div></div><div className="card preview-card"><div className="preview-header"><strong>Live result preview</strong><span className="badge good">82/100</span></div><div className="preview-grid"><div className="mini"><small>True profit</small><strong>$13.24</strong></div><div className="mini"><small>Margin</small><strong>26.5%</strong></div><div className="mini"><small>ROI</small><strong>88.3%</strong></div><div className="mini"><small>Max ad spend</small><strong>$21.24</strong></div></div><p className="input-note">Transparent assumptions. No signup required.</p></div></section>
+      <section className="container hero">
+        <div>
+          <span className="eyebrow">Calculate • Compare • Stress-test • Decide</span>
+          <h1>Know Your <span className="hero-accent">REAL</span> E-commerce Profit</h1>
+          <p className="lede">See what you actually keep after marketplace fees, product cost, shipping, ads, returns and other expenses — then find the levers that can improve it.</p>
+          <div className="cta-row"><a className="btn primary" href="#calculator">Calculate My Profit</a><a className="btn secondary" href="#features">See how it works</a></div>
+          <div className="trust-row"><span>✓ No signup</span><span>✓ Transparent assumptions</span><span>✓ Mobile-first</span></div>
+        </div>
+        <div className="hero-demo card">
+          <div className="preview-header"><div><span className="eyebrow">Example result</span><strong>Product verdict</strong></div><span className="badge good">82/100</span></div>
+          <div className="demo-profit">$13.24</div>
+          <div className="demo-label">estimated true profit / order</div>
+          <div className="mini-grid"><div className="mini"><small>Margin</small><strong>26.5%</strong></div><div className="mini"><small>Ads</small><strong>$8.00</strong></div><div className="mini"><small>Break-even</small><strong>$34.10</strong></div><div className="mini"><small>Verdict</small><strong>Good</strong></div></div>
+          <div className="insight compact"><strong>Biggest profit leak</strong><p>Advertising is 16% of revenue in this example.</p></div>
+        </div>
+      </section>
 
-      <section className="container section" id="calculator"><div><h2 className="section-title">Calculate. Compare. Stress-test. Decide.</h2><p className="section-copy">A practical profit engine for sellers on Amazon, TikTok Shop, Shopify, Etsy, eBay and Walmart.</p></div><Calculator /></section>
+      <section className="container section" id="calculator">
+        <div className="section-intro"><div><span className="eyebrow">Your decision engine</span><h2 className="section-title">One place to understand the whole unit economics</h2></div><p className="section-copy">Start with a simple estimate. Open scenarios, platform comparisons or seller-data analysis only when you need them.</p></div>
+        <Calculator />
+      </section>
 
-      <section className="container section" id="compare"><h2 className="section-title">Platform Battle Mode</h2><p className="section-copy">Use the same product assumptions to compare estimated profitability across marketplaces.</p><div className="card panel"><table className="compare-table"><thead><tr><th>Platform</th><th>Demo fee assumption</th><th>Best for</th><th>Status</th></tr></thead><tbody>{[['Amazon','15%','Marketplace reach','Ready'],['TikTok Shop','10%','Social commerce','Ready'],['Shopify','2.9%','Owned storefront','Ready'],['Etsy','6.5%','Creative products','Ready'],['eBay','13%','Broad marketplace','Ready'],['Walmart','15%','US marketplace','Ready']].map(r=><tr key={r[0]}><td><strong>{r[0]}</strong></td><td>{r[1]}</td><td>{r[2]}</td><td><span className="badge good">{r[3]}</span></td></tr>)}</tbody></table><p className="input-note">These are MVP demo assumptions, not verified current platform fee schedules.</p></div></section>
+      <section className="container section" id="features">
+        <div className="section-intro"><div><span className="eyebrow">Why this is more than a calculator</span><h2 className="section-title">From “what is my profit?” to “what should I do?”</h2></div></div>
+        <div className="feature-grid">
+          <div className="card feature"><span className="feature-number">01</span><h3>True profit, not sales</h3><p>Break revenue into the costs that actually consume your payout.</p></div>
+          <div className="card feature"><span className="feature-number">02</span><h3>Decision engine</h3><p>Get a simple Good, Marginal or Not Profitable verdict with transparent reasons.</p></div>
+          <div className="card feature"><span className="feature-number">03</span><h3>What-if + stress test</h3><p>See what happens when ads, returns, shipping or product costs move.</p></div>
+          <div className="card feature"><span className="feature-number">04</span><h3>Seller intelligence</h3><p>Upload a settlement CSV to analyze SKU profit and deductions locally.</p></div>
+        </div>
+      </section>
 
-      <section className="container section"><h2 className="section-title">Why sellers would come back</h2><div className="feature-grid"><div className="card feature"><h3>Profit Score</h3><p>See a transparent 0–100 score based on margin, ROI, ad burden and fee burden.</p></div><div className="card feature"><h3>Ad Survival Meter</h3><p>Find the maximum ad spend you can absorb before profit reaches zero.</p></div><div className="card feature"><h3>Stress Test</h3><p>Model downside cases like higher ads, shipping, product cost and returns.</p></div><div className="card feature"><h3>Shareable Results</h3><p>Share a result link or copy a clean summary so useful calculations can travel.</p></div></div></section>
+      <section className="container section">
+        <div className="card panel methodology"><div><span className="eyebrow">Trust by design</span><h2 className="section-title">Every important number has context</h2><p className="section-copy">Fee assumptions are explicitly marked as example, official or user-defined. Current marketplace rules can vary by country, category, program and seller account.</p></div><div className="method-list"><div><strong>Source</strong><span>Where a fee comes from</span></div><div><strong>Last verified</strong><span>When the configuration was checked</span></div><div><strong>Assumption type</strong><span>Official / example / user-defined</span></div></div></div>
+      </section>
 
-      <section className="container section" id="tools"><h2 className="section-title">More free calculators</h2><p className="section-copy">Dedicated tools create useful search entry points without forcing visitors through a generic homepage.</p><div className="tool-grid">{tools.map(([name,href])=><Link className="card feature" href={href} key={href}><h3>{name}</h3><p>Open tool →</p></Link>)}</div></section>
+      <section className="container section" id="tools"><h2 className="section-title">More free calculators</h2><p className="section-copy">Useful entry points for specific seller questions.</p><div className="tool-grid">{tools.map(([name, href]) => <Link className="card feature" href={href} key={href}><h3>{name}</h3><p>Open tool →</p></Link>)}</div></section>
 
-      <section className="container section" id="feedback"><div className="card feedback-box"><h2 className="section-title">💡 Missing something?</h2><p className="section-copy">Tell us what you want built next. MVP stores this feedback locally; a database can be connected later.</p><div className="feedback-grid"><select defaultValue=""><option value="" disabled>Choose category</option><option>New calculator</option><option>New marketplace</option><option>New country</option><option>New currency</option><option>Missing fee</option><option>Incorrect result</option><option>New feature</option><option>Other</option></select><input aria-label="Feedback" placeholder="What should we add?"/></div><div className="cta-row"><button className="btn primary">Submit Request</button><Link className="btn" href="/roadmap">View Feature Roadmap</Link></div></div></section>
+      <section className="container section"><div className="faq card panel"><span className="eyebrow">Quick answers</span><h2 className="section-title">Common questions</h2><details><summary>Is this an official marketplace fee calculator?</summary><p>No. Results are estimates using the displayed assumptions. Always verify current marketplace terms before making a business decision.</p></details><details><summary>Do I need an account?</summary><p>No. Core calculations, comparisons and local saving work without registration.</p></details><details><summary>Does the CSV analyzer upload my business data?</summary><p>This MVP processes CSV text in the browser. It does not intentionally send the uploaded file to a server.</p></details></div></section>
+
+      <section className="container section" id="feedback"><div className="card feedback-box"><span className="eyebrow">Help shape the roadmap</span><h2 className="section-title">What should we build next?</h2><p className="section-copy">Vote in the roadmap or tell us which marketplace, country, fee or seller workflow you need.</p><div className="cta-row"><Link className="btn primary" href="/roadmap">View roadmap</Link><a className="btn" href="mailto:hello@profitpilot.example">Contact the builder</a></div></div></section>
     </main>
 
     <footer className="container footer"><strong>ProfitPilot</strong><p>Estimated results only. Verify marketplace fees, taxes, returns and seller-specific terms before making business decisions.</p><div className="footer-links"><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/disclaimer">Disclaimer</Link></div></footer>

@@ -1,6 +1,21 @@
-# Global E-commerce True Profit Calculator
+# ProfitPilot — Global E-commerce True Profit Calculator
 
-Vercel-ready Next.js MVP for a global e-commerce profit decision tool.
+Next.js + TypeScript MVP/V2 for an e-commerce profit decision engine and seller intelligence tool.
+
+## What is included
+
+- True profit, margin, ROI and profit score
+- Good / Marginal / Not profitable decision engine
+- Country + currency + 6-language foundation
+- India, USA, Germany, France, Spain and Japan launch countries
+- Amazon, Flipkart, Meesho, TikTok Shop, Shopify, Etsy, eBay and Walmart architecture
+- Break-even, target-profit price, target-margin price and max ad spend
+- What-if and downside stress tests
+- Platform and country comparisons
+- Local save and shareable results
+- Settlement CSV / per-SKU analysis processed in the browser
+- Transparent fee assumption metadata
+- Mobile-first UX, accessibility and SEO foundation
 
 ## Run locally
 
@@ -11,25 +26,21 @@ npm run dev
 
 Open http://localhost:3000.
 
-## Build
+## Validate
 
 ```bash
+npm run typecheck
 npm run build
-npm start
 ```
 
-## Deploy to Vercel
+## Deploy
 
-1. Create a GitHub repository.
-2. Upload this folder to the repository.
-3. Import the repository in Vercel.
-4. Use the detected Next.js settings.
-5. Deploy.
-6. Add your custom domain in Vercel.
-7. Replace `https://example.com` in `app/layout.tsx`, `app/sitemap.ts`, and `app/robots.ts` with your real domain.
+Push the project to GitHub and import the repository into Vercel. Vercel will run the Next.js build automatically.
 
-## Important before production
+## Important data note
 
-The platform fee values in `lib/config.ts` are deliberately labeled demo assumptions. Verify current official platform fee schedules, payment fees, taxes and seller-specific terms before publishing them as factual current data.
+Platform fee numbers included in `lib/config.ts` are explicitly **example assumptions**. They are not claims of current official marketplace fees. Replace them with verified official schedules before presenting them as current facts. Each fee configuration includes status/source/update metadata so that a verified data layer can be added without rewriting the UI.
 
-The MVP's feedback, roadmap votes and share links are client-side. For real multi-user persistence, connect Supabase/Postgres (or another database) and server-side APIs.
+## Privacy note
+
+The settlement analyzer processes uploaded CSV text locally in the browser in this MVP. No database is required for core calculations.

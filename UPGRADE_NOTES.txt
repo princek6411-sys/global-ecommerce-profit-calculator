@@ -1,0 +1,21 @@
+Elite upgrade applied to the existing project.
+
+Preserved the existing Next.js/Vercel architecture and added/refined:
+- modular profit calculation and safer edge-case handling
+- separate country, currency and language controls
+- six-country / six-language foundation
+- configuration-driven marketplace support
+- category-aware configuration hooks with explicit assumption labeling
+- profit score, verdict, target price, break-even and ad-room tools
+- what-if and stress-test experience
+- platform, country and product comparison
+- local settlement CSV / SKU analysis with deduction buckets and CSV export
+- mobile/accessibility polish and privacy-oriented local processing
+- clearer trust/assumption messaging and non-misleading example UI
+
+Important: marketplace/tax values remain labeled example assumptions until verified official data is connected.
+
+Validation:
+- Core TypeScript library compilation passed.
+- Core calculation smoke test passed for the documented sample math.
+- Full Next.js install/build could not be completed in this environment because npm install timed out; Vercel should run the real dependency install/build during deployment.

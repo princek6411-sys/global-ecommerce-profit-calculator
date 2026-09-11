@@ -1,152 +1,199 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { countries, currencies, demoPlatformFees, supportedPlatforms, type CurrencyCode, type Platform } from '@/lib/config';
-import {
-  CalculatorInput,
-  calculateAdvertising,
-  calculateAffiliateCommission,
-  calculateBreakEvenPrice,
-  calculateDiscount,
-  calculateMaximumAdSpend,
-  calculateNetProfit,
-  calculateOtherCosts,
-  calculatePackaging,
-  calculatePaymentFee,
-  calculatePlatformFee,
-  calculateProductCost,
-  calculateProfitMargin,
-  calculateRefundAllowance,
-  calculateRevenue,
-  calculateROI,
-  calculateShipping,
-  calculateTax,
-  calculateTotalExpenses,
-  decisionForScore,
-  scoreProfit,
-  calculateTargetProfitPrice
-} from '@/lib/calculator';
+import SellerAnalyzer from '@/components/SellerAnalyzer';
+import { categories, countries, currencies, getCountry, getDefaultPlatform, getPlatformsForCountry, getPlatformConfig, languages, platformConfigs, type Category, type CountryCode, type CurrencyCode, type LanguageCode, type Platform } from '@/lib/config';
+import { type CalculatorInput, type CostConfig, calculateAdvertising, calculateBreakEvenPrice, calculateLineItems, calculateMaximumAdSpend, calculateNetProfit, calculateProfitMargin, calculateROI, calculateTargetMarginPrice, calculateTargetProfitPrice, decisionForScore, scoreProfit, calculateTotalExpenses } from '@/lib/calculator';
+import { t } from '@/lib/i18n';
 
 type Props = { initialPlatform?: Platform };
-type State = CalculatorInput & { platform: Platform; country: typeof countries[number]; currency: CurrencyCode; productName: string };
+type State = CalculatorInput & { platform: Platform; country: CountryCode; currency: CurrencyCode; productName: string; category: Category; language: LanguageCode };
+type ProductDraft = { name: string; price: number; cost: number; ads: number };
 
-const defaultCost = (enabled: boolean, value: number, mode: 'fixed'|'percent' = 'percent') => ({ enabled, value, mode });
-const initial = (platform: Platform = 'Amazon'): State => ({
-  productName: 'Sample Product', platform, country: 'United States', currency: 'USD', sellingPrice: 49.99, quantity: 1, productCost: 15,
-  platformFee: defaultCost(true, demoPlatformFees[platform] * 100), paymentFee: defaultCost(true, 2.9), shipping: defaultCost(true, 5, 'fixed'), packaging: defaultCost(true, 0.5, 'fixed'), advertising: defaultCost(true, 8, 'fixed'), affiliate: defaultCost(false, 0), discount: defaultCost(false, 0), returns: defaultCost(true, 3), tax: defaultCost(false, 0), other: defaultCost(false, 0)
-});
-const money = (value: number, currency: CurrencyCode) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value);
+const cost = (enabled: boolean, value: number, mode: CostConfig['mode'] = 'percent'): CostConfig => ({ enabled, value, mode });
+const clamp = (n: number, min = 0, max = Number.MAX_SAFE_INTEGER) => Math.min(max, Math.max(min, Number.isFinite(n) ? n : min));
+const money = (value: number, currency: CurrencyCode) => new Intl.NumberFormat(currencies[currency]?.locale ?? 'en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0);
+
+function initial(platform: Platform = 'Amazon', country: CountryCode = 'US', language: LanguageCode = 'en'): State {
+  const c = getCountry(country);
+  const valid = getPlatformsForCountry(c.code).some((p) => p.platform === platform) ? platform : getDefaultPlatform(c.code);
+  const fee = getPlatformConfig(valid, c.code)?.fee.value ?? 0;
+  return { productName: 'Sample Product', platform: valid, country: c.code, currency: c.currency, language, category: 'Other', sellingPrice: 49.99, quantity: 1, productCost: 15, platformFee: cost(true, fee), paymentFee: cost(true, 2.9), shipping: cost(true, 5, 'fixed'), packaging: cost(true, 0.5, 'fixed'), advertising: cost(true, 8, 'fixed'), affiliate: cost(false, 0), discount: cost(false, 0), returns: cost(true, 3), rto: cost(false, 0), tax: cost(false, 0), other: cost(false, 0) };
+}
 
 export default function Calculator({ initialPlatform = 'Amazon' }: Props) {
   const [s, setS] = useState<State>(() => initial(initialPlatform));
   const [targetProfit, setTargetProfit] = useState(10);
   const [targetMargin, setTargetMargin] = useState(25);
-  const [feedback, setFeedback] = useState<'idle'|'yes'|'no'>('idle');
-  const [feedbackDetail, setFeedbackDetail] = useState('');
-  const [shareStatus, setShareStatus] = useState('');
   const [saved, setSaved] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
+  const [tab, setTab] = useState<'calculator' | 'scenarios' | 'compare' | 'seller'>('calculator');
+  const [products, setProducts] = useState<ProductDraft[]>([
+    { name: 'Product A', price: 49.99, cost: 15, ads: 8 },
+    { name: 'Product B', price: 59.99, cost: 22, ads: 10 },
+    { name: 'Product C', price: 79.99, cost: 28, ads: 12 }
+  ]);
+
+  const tr = (key: Parameters<typeof t>[1]) => t(s.language, key);
 
   useEffect(() => {
-    try { const raw = localStorage.getItem('profitpilot-calculation'); if (raw) setS(JSON.parse(raw)); } catch {}
-  }, []);
+    try {
+      const raw = localStorage.getItem('profitpilot-calculation-v2');
+      if (!raw) return;
+      const restored = JSON.parse(raw) as Partial<State>;
+      const next = { ...initial(restored.platform ?? initialPlatform, restored.country ?? 'US', restored.language ?? 'en'), ...restored } as State;
+      setS(next);
+    } catch { /* corrupted local state is ignored */ }
+  }, [initialPlatform]);
 
-  const update = <K extends keyof State>(key: K, value: State[K]) => setS(prev => ({...prev, [key]: value}));
-  const updateCost = (key: keyof CalculatorInput, patch: Partial<{enabled:boolean; value:number; mode:'fixed'|'percent'}>) => setS(prev => ({...prev, [key]: {...(prev[key] as any), ...patch}}));
+  useEffect(() => {
+    document.documentElement.lang = s.language;
+  }, [s.language]);
+
+  const update = <K extends keyof State>(key: K, value: State[K]) => setS((prev) => ({ ...prev, [key]: value }));
+  const updateCost = (key: keyof CalculatorInput, patch: Partial<CostConfig>) => setS((prev) => ({ ...prev, [key]: { ...prev[key] as CostConfig, ...patch } }));
+
+  const countryChange = (code: CountryCode) => {
+    const c = getCountry(code);
+    const platform = getDefaultPlatform(code);
+    const fee = getPlatformConfig(platform, code)?.fee.value ?? 0;
+    setS((prev) => ({ ...prev, country: code, currency: c.currency, platform, platformFee: cost(true, fee) }));
+  };
+
+  const platformChange = (platform: Platform) => {
+    const fee = getPlatformConfig(platform, s.country)?.fee.value ?? 0;
+    setS((prev) => ({ ...prev, platform, platformFee: cost(true, fee) }));
+  };
+
+  const currencyChange = (currency: CurrencyCode) => update('currency', currency);
+  const languageChange = (language: LanguageCode) => update('language', language);
 
   const result = useMemo(() => {
-    const i: CalculatorInput = s;
-    const revenue = calculateRevenue(i), expenses = calculateTotalExpenses(i), profit = calculateNetProfit(i);
-    const margin = calculateProfitMargin(i), roi = calculateROI(i), score = scoreProfit(i), decision = decisionForScore(score);
-    const line = {
-      product: calculateProductCost(i), platform: calculatePlatformFee(i), payment: calculatePaymentFee(i), shipping: calculateShipping(i), packaging: calculatePackaging(i), ads: calculateAdvertising(i), affiliate: calculateAffiliateCommission(i), discount: calculateDiscount(i), returns: calculateRefundAllowance(i), tax: calculateTax(i), other: calculateOtherCosts(i)
-    };
-    const fixedForTarget = {...i, advertising: {enabled:false,value:0,mode:'fixed' as const}};
-    const targetMarginPrice = margin >= targetMargin ? s.sellingPrice : calculateTargetProfitPrice(fixedForTarget, calculateProductCost(i) * 0 + (targetMargin / Math.max(1, 100-targetMargin)) * calculateProductCost(i));
-    return { revenue, expenses, profit, margin, roi, score, decision, breakEven: calculateBreakEvenPrice(i), maxAd: calculateMaximumAdSpend(i), targetPrice: calculateTargetProfitPrice(i, targetProfit), targetMarginPrice, line };
+    const input = s as CalculatorInput;
+    const line = calculateLineItems(input);
+    const profit = calculateNetProfit(input);
+    const margin = calculateProfitMargin(input);
+    const roi = calculateROI(input);
+    const score = scoreProfit(input);
+    const decision = decisionForScore(score);
+    return { line, revenue: line.revenue, expenses: calculateTotalExpenses(input), profit, margin, roi, score, decision, breakEven: calculateBreakEvenPrice(input), maxAd: calculateMaximumAdSpend(input), targetPrice: calculateTargetProfitPrice(input, targetProfit), targetMarginPrice: calculateTargetMarginPrice(input, targetMargin) };
   }, [s, targetProfit, targetMargin]);
+  const totalExpenses = result.expenses;
+
+  const comparisons = useMemo(() => platformConfigs.filter((p) => p.countries.includes(s.country)).map((p) => {
+    const next = { ...s, platform: p.platform, platformFee: cost(true, p.fee.value) } as CalculatorInput;
+    return { ...p, profit: calculateNetProfit(next), margin: calculateProfitMargin(next) };
+  }).sort((a, b) => b.profit - a.profit), [s]);
+
+  const countryComparisons = useMemo(() => countries.map((c) => {
+    const p = getPlatformsForCountry(c.code)[0];
+    const next = { ...s, country: c.code, currency: c.currency, platform: p.platform, platformFee: cost(true, p.fee.value) } as CalculatorInput;
+    return { ...c, platform: p.platform, profit: calculateNetProfit(next), margin: calculateProfitMargin(next) };
+  }).sort((a, b) => b.profit - a.profit), [s]);
 
   const stress = useMemo(() => {
     const base = s as CalculatorInput;
-    const cases: {label:string; next:CalculatorInput}[] = [
-      {label:'Base case', next: base},
-      {label:'Ads +20%', next:{...base, advertising:{...base.advertising, value:base.advertising.value*1.2}}},
-      {label:'Shipping +20%', next:{...base, shipping:{...base.shipping, value:base.shipping.value*1.2}}},
-      {label:'Product cost +10%', next:{...base, productCost:base.productCost*1.1}},
-      {label:'Returns +5%', next:{...base, returns:{...base.returns, value:base.returns.value+5, mode:'percent'}}}
-    ];
-    const mapped = cases.map(c=>({label:c.label, profit:calculateNetProfit(c.next)}));
-    const passed = mapped.filter(x=>x.profit > 0).length;
-    return {mapped, passed};
+    const scenarios = [
+      ['Base case', base],
+      ['Ads +20%', { ...base, advertising: { ...base.advertising, value: base.advertising.value * 1.2 } }],
+      ['Shipping +20%', { ...base, shipping: { ...base.shipping, value: base.shipping.value * 1.2 } }],
+      ['Product cost +10%', { ...base, productCost: base.productCost * 1.1 }],
+      ['Returns +5%', { ...base, returns: { ...base.returns, enabled: true, value: base.returns.value + 5, mode: 'percent' as const } }],
+      ['Combined downside', { ...base, advertising: { ...base.advertising, value: base.advertising.value * 1.2 }, shipping: { ...base.shipping, value: base.shipping.value * 1.2 }, productCost: base.productCost * 1.1, returns: { ...base.returns, enabled: true, value: base.returns.value + 5, mode: 'percent' as const } }]
+    ] as const;
+    return scenarios.map(([label, input]) => ({ label, profit: calculateNetProfit(input) }));
   }, [s]);
 
-  const comparisons = useMemo(() => supportedPlatforms.map(platform => {
-    const next = {...s, platform, platformFee:defaultCost(true, demoPlatformFees[platform]*100)} as CalculatorInput;
-    return {platform, profit:calculateNetProfit(next), margin:calculateProfitMargin(next)};
-  }).sort((a,b)=>b.profit-a.profit), [s]);
+  const productComparison = useMemo(() => products.map((p) => {
+    const next = { ...s, sellingPrice: Math.max(0, p.price), productCost: Math.max(0, p.cost), advertising: { ...s.advertising, enabled: true, value: Math.max(0, p.ads), mode: 'fixed' as const } } as CalculatorInput;
+    return { ...p, profit: calculateNetProfit(next), margin: calculateProfitMargin(next), score: scoreProfit(next), verdict: decisionForScore(scoreProfit(next)) };
+  }).sort((a, b) => b.profit - a.profit), [products, s]);
 
-  const save = () => { try { localStorage.setItem('profitpilot-calculation', JSON.stringify(s)); setSaved(true); setTimeout(()=>setSaved(false),1600);} catch {} };
-  const createShareUrl = () => `${window.location.origin}/result?data=${encodeURIComponent(JSON.stringify({s}))}`;
+  const save = () => {
+    try { localStorage.setItem('profitpilot-calculation-v2', JSON.stringify(s)); setSaved(true); window.setTimeout(() => setSaved(false), 1400); } catch { setShareStatus('Local save is unavailable in this browser.'); }
+  };
+
   const share = async () => {
-    const url = createShareUrl();
+    const publicResult = { productName: s.productName, currency: s.currency, profit: result.profit, margin: result.margin, roi: result.roi, score: result.score, platform: s.platform, verdict: result.decision.label, bestPlatform: comparisons[0]?.platform };
+    const url = `${window.location.origin}/result?data=${encodeURIComponent(JSON.stringify({ result: publicResult }))}`;
     try {
-      if (navigator.share) await navigator.share({ title:'My e-commerce profit result', text:`Estimated profit: ${money(result.profit,s.currency)}`, url });
-      else { await navigator.clipboard.writeText(url); setShareStatus('Share link copied'); setTimeout(()=>setShareStatus(''),2000); }
-    } catch {}
+      if (navigator.share) await navigator.share({ title: 'My e-commerce profit result', text: `Estimated profit: ${money(result.profit, s.currency)}`, url });
+      else { await navigator.clipboard.writeText(url); setShareStatus('Share link copied'); }
+    } catch { setShareStatus('Share cancelled.'); }
+    window.setTimeout(() => setShareStatus(''), 1800);
   };
-  const shareImage = async () => {
-    const canvas=document.createElement('canvas'); canvas.width=1080; canvas.height=1350; const ctx=canvas.getContext('2d'); if(!ctx) return;
-    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,1080,1350);
-    ctx.fillStyle='#111827'; ctx.fillRect(60,60,960,1230);
-    ctx.fillStyle='#ffffff'; ctx.font='700 34px system-ui'; ctx.fillText('E-commerce Profit Report',110,140);
-    ctx.font='800 84px system-ui'; ctx.fillText('TRUE PROFIT',110,270); ctx.font='800 96px system-ui'; ctx.fillText(money(result.profit,s.currency),110,380);
-    ctx.font='600 30px system-ui'; ctx.fillText(`${result.margin.toFixed(1)}% margin   •   ${result.roi.toFixed(1)}% ROI`,110,445);
-    ctx.font='700 34px system-ui'; ctx.fillText(`Profit Score: ${result.score}/100`,110,530);
-    ctx.font='600 30px system-ui'; ctx.fillText(`Platform: ${s.platform}`,110,585);
-    ctx.fillStyle='#dbeafe'; ctx.fillRect(110,650,860,230); ctx.fillStyle='#111827'; ctx.font='700 34px system-ui'; ctx.fillText('Selling Price',150,720); ctx.fillText('Break-even',510,720); ctx.font='800 44px system-ui'; ctx.fillText(money(s.sellingPrice,s.currency),150,785); ctx.fillText(money(result.breakEven,s.currency),510,785);
-    ctx.fillStyle='#ffffff'; ctx.font='500 28px system-ui'; ctx.fillText('Calculated with ProfitPilot',110,970); ctx.font='500 23px system-ui'; ctx.fillText('Estimate only • Verify current marketplace fees and taxes',110,1020);
-    canvas.toBlob(async blob=>{ if(!blob) return; const file=new File([blob], 'profit-result.png',{type:'image/png'}); try { if(navigator.share && 'canShare' in navigator && navigator.canShare({files:[file]})) { await navigator.share({files:[file], title:'My e-commerce profit'}); } else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='profit-result.png'; a.click(); URL.revokeObjectURL(a.href); setShareStatus('Share image downloaded'); setTimeout(()=>setShareStatus(''),2000);} } catch {} },'image/png');
-  };
-  const submitFeedback = () => { try { const items=JSON.parse(localStorage.getItem('profitpilot-feedback')||'[]'); items.push({type:feedback==='yes'?'useful':'missing', detail:feedbackDetail, createdAt:new Date().toISOString()}); localStorage.setItem('profitpilot-feedback',JSON.stringify(items)); setFeedbackDetail(''); setShareStatus('Thanks — feedback saved'); setTimeout(()=>setShareStatus(''),2000);} catch {} };
-  const onPlatformChange=(platform:Platform)=>setS(prev=>({...prev,platform,platformFee:defaultCost(true,demoPlatformFees[platform]*100)}));
 
+  const shareText = async () => {
+    try { await navigator.clipboard.writeText(`ProfitPilot report\n${s.productName}\nProfit: ${money(result.profit, s.currency)}\nMargin: ${result.margin.toFixed(1)}%\nROI: ${result.roi.toFixed(1)}%\nScore: ${result.score}/100\nPlatform: ${s.platform}`); setShareStatus('Result copied'); } catch { setShareStatus('Copy is unavailable in this browser.'); }
+    window.setTimeout(() => setShareStatus(''), 1800);
+  };
+
+  const shareImage = async () => {
+    const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 880; const ctx = canvas.getContext('2d'); if (!ctx) return;
+    ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 34px system-ui'; ctx.fillText('ProfitPilot — E-commerce Profit Report', 70, 90);
+    ctx.font = '800 26px system-ui'; ctx.fillText('TRUE PROFIT', 70, 170); ctx.font = '800 86px system-ui'; ctx.fillText(money(result.profit, s.currency), 70, 260);
+    ctx.font = '600 28px system-ui'; ctx.fillText(`Margin ${result.margin.toFixed(1)}%  •  ROI ${result.roi.toFixed(1)}%`, 70, 320); ctx.fillText(`Profit Score ${result.score}/100`, 70, 365);
+    ctx.fillStyle = '#dbeafe'; ctx.fillRect(70, 430, 940, 210); ctx.fillStyle = '#0f172a'; ctx.font = '700 28px system-ui'; ctx.fillText('Platform', 110, 490); ctx.fillText('Break-even', 560, 490); ctx.font = '800 44px system-ui'; ctx.fillText(s.platform, 110, 545); ctx.fillText(Number.isFinite(result.breakEven) ? money(result.breakEven, s.currency) : 'N/A', 560, 545); ctx.font = '500 22px system-ui'; ctx.fillText('Estimated result • verify current marketplace terms', 70, 710);
+    canvas.toBlob(async (blob) => { if (!blob) return; const file = new File([blob], 'profitpilot-result.png', { type: 'image/png' }); try { if (navigator.share && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'ProfitPilot result' }); else { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'profitpilot-result.png'; a.click(); URL.revokeObjectURL(url); } setShareStatus('Share image ready'); } catch { setShareStatus('Image share cancelled.'); } window.setTimeout(() => setShareStatus(''), 1800); }, 'image/png');
+  };
+
+  const feeMeta = getPlatformConfig(s.platform, s.country)?.fee;
   const statusClass = result.decision.tone;
-  return <>
-    <div className="calculator">
+  const costRows: Array<[keyof CalculatorInput, string, 'percent' | 'fixed']> = [
+    ['platformFee', tr('fees'), 'percent'], ['paymentFee', tr('payment'), 'percent'], ['shipping', tr('shipping'), 'fixed'], ['packaging', tr('packaging'), 'fixed'], ['advertising', tr('advertising'), 'fixed'], ['affiliate', tr('affiliate'), 'percent'], ['discount', tr('discount'), 'percent'], ['returns', tr('returns'), 'percent'], ['rto', tr('rto'), 'percent'], ['tax', tr('tax'), 'percent'], ['other', tr('other'), 'fixed']
+  ];
+
+  const updateProduct = (index: number, patch: Partial<ProductDraft>) => setProducts((prev) => prev.map((p, i) => i === index ? { ...p, ...patch } : p));
+
+  return <div>
+    <div className="card localization-bar" aria-label="Localization settings">
+      <div className="select-group"><label htmlFor="country">{tr('country')}</label><select id="country" value={s.country} onChange={(e) => countryChange(e.target.value as CountryCode)}>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
+      <div className="select-group"><label htmlFor="currency">{tr('currency')}</label><select id="currency" value={s.currency} onChange={(e) => currencyChange(e.target.value as CurrencyCode)}>{(Object.entries(currencies) as [CurrencyCode, typeof currencies[CurrencyCode]][]).map(([code, c]) => <option key={code} value={code}>{code} — {c.label}</option>)}</select></div>
+      <div className="select-group"><label htmlFor="language">{tr('language')}</label><select id="language" value={s.language} onChange={(e) => languageChange(e.target.value as LanguageCode)}>{languages.map((l) => <option key={l.code} value={l.code}>{l.nativeName}</option>)}</select></div>
+    </div>
+
+    <div className="tabbar" role="tablist" aria-label="Calculator sections">
+      {([["calculator", tr('calculator')], ["scenarios", tr('scenarios')], ["compare", tr('compareTab')], ["seller", tr('seller')]] as const).map(([id, label]) => <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}>{label}</button>)}
+    </div>
+
+    {tab === 'calculator' && <div className="calculator">
       <div className="card panel">
-        <h2>True Profit Calculator</h2><p className="section-copy">Enter real costs. Change any assumption and results update instantly.</p>
+        <h2>{tr('calculate')}</h2><p className="section-copy">Start with the essentials. Every optional cost can be switched on or off.</p>
         <div className="form-grid">
-          <div className="field full"><label>Product name</label><input value={s.productName} onChange={e=>update('productName',e.target.value)} /></div>
-          <div className="field"><label>Platform</label><select value={s.platform} onChange={e=>onPlatformChange(e.target.value as Platform)}>{supportedPlatforms.map(p=><option key={p}>{p}</option>)}</select></div>
-          <div className="field"><label>Country</label><select value={s.country} onChange={e=>update('country',e.target.value as State['country'])}>{countries.map(c=><option key={c}>{c}</option>)}</select></div>
-          <div className="field"><label>Currency</label><select value={s.currency} onChange={e=>update('currency',e.target.value as CurrencyCode)}>{Object.keys(currencies).map(c=><option key={c}>{c}</option>)}</select></div>
-          <div className="field"><label>Quantity</label><input type="number" min="1" value={s.quantity} onChange={e=>update('quantity',Math.max(1,Number(e.target.value)||1))}/></div>
-          <div className="field"><label>Selling price / unit</label><input type="number" min="0" step="0.01" value={s.sellingPrice} onChange={e=>update('sellingPrice',Math.max(0,Number(e.target.value)||0))}/></div>
-          <div className="field"><label>Product cost / unit</label><input type="number" min="0" step="0.01" value={s.productCost} onChange={e=>update('productCost',Math.max(0,Number(e.target.value)||0))}/></div>
+          <div className="field"><label htmlFor="product-name">{tr('product')}</label><input id="product-name" value={s.productName} onChange={(e) => update('productName', e.target.value.slice(0, 120))} /></div>
+          <div className="field"><label htmlFor="platform">{tr('platform')}</label><select id="platform" value={s.platform} onChange={(e) => platformChange(e.target.value as Platform)}>{getPlatformsForCountry(s.country).map((p) => <option key={p.platform} value={p.platform}>{p.platform}</option>)}</select></div>
+          <div className="field"><label htmlFor="category">{tr('category')}</label><select id="category" value={s.category} onChange={(e) => update('category', e.target.value as Category)}>{categories.map((c) => <option key={c}>{c}</option>)}</select></div>
+          <div className="field"><label htmlFor="price">{tr('sellingPrice')}</label><input id="price" type="number" min="0" step="0.01" value={s.sellingPrice} onChange={(e) => update('sellingPrice', clamp(Number(e.target.value)))} /></div>
+          <div className="field"><label htmlFor="product-cost">{tr('productCost')}</label><input id="product-cost" type="number" min="0" step="0.01" value={s.productCost} onChange={(e) => update('productCost', clamp(Number(e.target.value)))} /></div>
+          <div className="field"><label htmlFor="quantity">{tr('quantity')}</label><input id="quantity" type="number" min="1" step="1" value={s.quantity} onChange={(e) => update('quantity', Math.max(1, Math.floor(Number(e.target.value) || 1)))} /></div>
         </div>
-        <h3>Costs</h3>
-        {([['platformFee','Platform fee'],['paymentFee','Payment processing'],['shipping','Shipping'],['packaging','Packaging'],['advertising','Advertising'],['affiliate','Affiliate commission'],['discount','Discount'],['returns','Refund / return allowance'],['tax','Tax'],['other','Other expenses']] as const).map(([key,label])=><div className="cost-row" key={key}><div className="field"><label>{label}</label><input type="number" min="0" step="0.01" value={(s[key] as any).value} onChange={e=>updateCost(key,{value:Math.max(0,Number(e.target.value)||0)})}/></div><div className="field"><label>Mode</label><select value={(s[key] as any).mode} onChange={e=>updateCost(key,{mode:e.target.value as 'fixed'|'percent'})}><option value="percent">%</option><option value="fixed">Fixed</option></select></div><button className={`toggle ${(s[key] as any).enabled?'on':''}`} onClick={()=>updateCost(key,{enabled:!(s[key] as any).enabled})} aria-label={`Toggle ${label}`}>{(s[key] as any).enabled?'✓':'+'}</button></div>)}
-        <div className="notice"><strong>Demo fee assumptions.</strong> Verify official/current marketplace fees, taxes and seller-specific charges before publishing production results.</div>
-        <div className="actions"><button className="small-btn" onClick={save}>💾 {saved?'Saved':'Save locally'}</button><button className="small-btn" onClick={()=>setS(initial(s.platform))}>Reset</button></div>
+        <h3>Costs & deductions</h3>
+        {costRows.map(([key, label]) => <div className="cost-row" key={key}><div className="field"><label htmlFor={`cost-${String(key)}`}>{label}</label><input id={`cost-${String(key)}`} type="number" min="0" step="0.01" value={(s[key] as CostConfig).value} onChange={(e) => updateCost(key, { value: clamp(Number(e.target.value)) })} disabled={!(s[key] as CostConfig).enabled} /></div><div className="field"><label htmlFor={`mode-${String(key)}`}>Mode</label><select id={`mode-${String(key)}`} value={(s[key] as CostConfig).mode} onChange={(e) => updateCost(key, { mode: e.target.value as CostConfig['mode'] })}><option value="percent">%</option><option value="fixed">Fixed</option></select></div><button type="button" className={`toggle ${(s[key] as CostConfig).enabled ? 'on' : ''}`} onClick={() => updateCost(key, { enabled: !(s[key] as CostConfig).enabled })} aria-label={`${(s[key] as CostConfig).enabled ? 'Disable' : 'Enable'} ${label}`}>{(s[key] as CostConfig).enabled ? '✓' : '+'}</button></div>)}
+        <div className="notice"><strong>Fee transparency.</strong> {feeMeta?.status === 'example' ? 'This fee is an example assumption, not a current official schedule.' : 'This fee is configured as a verified source or user-defined value.'} Choose a user-defined value whenever you know your current seller terms.</div>
+        {feeMeta?.sourceUrl && <p className="input-note"><a href={feeMeta.sourceUrl} target="_blank" rel="noreferrer">View fee source →</a></p>}
+        <div className="actions"><button className="small-btn" onClick={save}>💾 {saved ? 'Saved' : tr('save')}</button><button className="small-btn" onClick={() => setS(initial(initialPlatform, s.country, s.language))}>{tr('reset')}</button></div>
       </div>
 
       <div className="results">
         <div className="card panel">
-          <div className="profit-hero"><small>TRUE NET PROFIT</small><div className="profit-value">{money(result.profit,s.currency)}</div><span className={`badge ${statusClass}`}>{result.decision.label}</span><div style={{marginTop:10,opacity:.8,fontSize:13}}>Profit Score: {result.score}/100</div></div>
-          <div className="metrics"><div className="metric"><small>Revenue</small><strong>{money(result.revenue,s.currency)}</strong></div><div className="metric"><small>Total expenses</small><strong>{money(result.expenses,s.currency)}</strong></div><div className="metric"><small>Profit margin</small><strong>{result.margin.toFixed(1)}%</strong></div><div className="metric"><small>ROI</small><strong>{result.roi.toFixed(1)}%</strong></div><div className="metric"><small>Break-even</small><strong>{money(result.breakEven,s.currency)}</strong></div><div className="metric"><small>Max ad spend</small><strong>{money(result.maxAd,s.currency)}</strong></div></div>
-          <div className="breakdown">{Object.entries({Revenue:result.revenue,'Product Cost':-result.line.product,'Platform Fees':-result.line.platform,'Payment Fees':-result.line.payment,Shipping:-result.line.shipping,Packaging:-result.line.packaging,Advertising:-result.line.ads,'Affiliate Commission':-result.line.affiliate,Discounts:-result.line.discount,'Refund / Returns':-result.line.returns,Taxes:-result.line.tax,'Other Costs':-result.line.other}).map(([label,value])=><div className="breakdown-row" key={label}><span>{label}</span><span>{money(value,s.currency)}</span></div>)}</div>
-          <div className="actions"><button className="small-btn" onClick={share}>📤 Share Result</button><button className="small-btn" onClick={shareImage}>🖼️ Share Image</button><button className="small-btn" onClick={async()=>{await navigator.clipboard.writeText(`E-commerce Profit Report\nSelling price: ${money(s.sellingPrice,s.currency)}\nTrue profit: ${money(result.profit,s.currency)}\nMargin: ${result.margin.toFixed(1)}%\nROI: ${result.roi.toFixed(1)}%\nProfit Score: ${result.score}/100`);setShareStatus('Result copied');setTimeout(()=>setShareStatus(''),2000)}}>Copy</button></div>
-          {shareStatus && <div className="input-note">{shareStatus}</div>}
+          <div className="profit-hero"><small>{tr('trueProfit').toUpperCase()}</small><div className="profit-value">{money(result.profit, s.currency)}</div><div className="hero-row"><span className={`badge ${statusClass}`}>{result.decision.label}</span><span className="score-chip">{tr('score')} {result.score}/100</span></div><p className="hero-copy">{result.profit > 0 ? 'Your product is profitable under the current assumptions.' : 'Current assumptions do not produce positive profit.'}</p></div>
+          <div className="metrics"><div className="metric"><small>{tr('revenue')}</small><strong>{money(result.revenue, s.currency)}</strong></div><div className="metric"><small>{tr('expenses')}</small><strong>{money(totalExpenses, s.currency)}</strong></div><div className="metric"><small>{tr('margin')}</small><strong>{result.margin.toFixed(1)}%</strong></div><div className="metric"><small>{tr('roi')}</small><strong>{result.roi.toFixed(1)}%</strong></div><div className="metric"><small>{tr('breakEven')}</small><strong>{Number.isFinite(result.breakEven) ? money(result.breakEven, s.currency) : 'N/A'}</strong></div><div className="metric"><small>{tr('maxAd')}</small><strong>{money(result.maxAd, s.currency)}</strong></div></div>
+          <div className="insight"><strong>{tr('why')}</strong><p>{result.margin >= 25 ? 'Healthy margin buffer.' : 'Your margin is relatively thin; small cost increases may reduce profit quickly.'} {calculateAdvertising(s) > 0 ? `Ads are ${((calculateAdvertising(s) / Math.max(result.revenue, 1)) * 100).toFixed(1)}% of revenue.` : 'No ad spend is included.'}</p></div>
+          <div className="insight compact"><strong>{tr('recommendedAction')}</strong><p>{result.maxAd > 0 ? `You have about ${money(result.maxAd, s.currency)} of estimated ad room at zero target profit.` : 'Review your largest cost buckets before increasing ad spend.'}</p></div>
+          <h3>{tr('whereMoneyGoes')}</h3>
+          <div className="breakdown">{Object.entries({ Revenue: result.line.revenue, 'Product cost': -result.line.product, 'Marketplace fee': -result.line.platform, 'Payment fee': -result.line.payment, Shipping: -result.line.shipping, Packaging: -result.line.packaging, Advertising: -result.line.advertising, Affiliate: -result.line.affiliate, Discount: -result.line.discount, Returns: -result.line.returns, RTO: -result.line.rto, Tax: -result.line.tax, Other: -result.line.other }).map(([label, value]) => <div className="breakdown-row" key={label}><span>{label}</span><span className={value < 0 ? 'negative' : ''}>{money(value, s.currency)}</span></div>)}</div>
+          <details className="details"><summary>{tr('assumptions')}</summary><div className="assumption-grid"><span>{tr('fees')}</span><strong>{s.platformFee.mode === 'percent' ? `${s.platformFee.value}%` : money(s.platformFee.value, s.currency)}</strong><span>Source status</span><strong>{feeMeta?.status ?? 'user-defined'}</strong><span>Last verified</span><strong>{feeMeta?.lastVerified ?? 'Not verified'}</strong><span>{tr('category')}</span><strong>{s.category}</strong></div></details>
+          <div className="actions"><button className="small-btn" onClick={share}>📤 {tr('share')}</button><button className="small-btn" onClick={shareImage}>🖼️ {tr('shareImage')}</button><button className="small-btn" onClick={shareText}>Copy result</button></div>{shareStatus && <p className="input-note" role="status">{shareStatus}</p>}
         </div>
-        <div className="card panel" style={{marginTop:14}}><h2>Should I sell this product?</h2><p className="section-copy">Estimate based on your assumptions — not financial advice.</p><span className={`badge ${statusClass}`}>{result.decision.label}</span><ul style={{color:'#626a75',lineHeight:1.7}}><li>{result.margin >= 25 ? 'Healthy margin buffer' : 'Margin is relatively thin'}</li><li>{result.maxAd > 0 ? `Up to ${money(result.maxAd,s.currency)} of ad room before zero profit` : 'No positive ad room under current assumptions'}</li><li>{result.breakEven <= s.sellingPrice ? 'Selling price is above break-even' : 'Selling price is at or below break-even'}</li></ul><div className="notice">Why this score? Margin, ROI, fee burden, ad burden and break-even buffer are combined in a transparent heuristic.</div></div>
+        <div className="card panel" style={{ marginTop: 14 }}><h2>{tr('verdict')}</h2><p className="section-copy">Estimate based on your inputs, not financial advice.</p><span className={`badge ${statusClass}`}>{result.decision.label}</span><ul className="plain-list"><li>{result.margin >= 25 ? 'Healthy margin buffer' : 'Thin margin buffer'}</li><li>{result.breakEven <= s.sellingPrice ? 'Selling price is above break-even' : 'Selling price is at or below break-even'}</li><li>{result.maxAd > 0 ? `Estimated ad room: ${money(result.maxAd, s.currency)}` : 'No positive ad room at current target'}</li></ul><details className="details"><summary>How is the score calculated?</summary><p className="input-note">The score is a transparent heuristic using margin, ROI, ad burden, fee burden and break-even buffer. It is not an official rating.</p></details></div>
       </div>
-    </div>
+    </div>}
 
-    <section className="section"><h2 className="section-title">What-if + Target Price</h2><div className="feature-grid"><div className="card panel"><h3>What should I charge?</h3><div className="form-grid"><div className="field"><label>Target profit</label><input type="number" value={targetProfit} onChange={e=>setTargetProfit(Math.max(0,Number(e.target.value)||0))}/></div><div className="field"><label>Target margin %</label><input type="number" min="0" max="99" value={targetMargin} onChange={e=>setTargetMargin(Math.min(99,Math.max(0,Number(e.target.value)||0)))}/></div></div><div className="metrics"><div className="metric"><small>Target profit price</small><strong>{money(result.targetPrice,s.currency)}</strong></div><div className="metric"><small>Target margin price</small><strong>{money(result.targetMarginPrice,s.currency)}</strong></div></div></div><div className="card panel"><h3>Ad Survival Meter</h3><p className="section-copy">Maximum ad spend before your current product hits zero estimated profit.</p><div className="progress"><div style={{width:`${Math.min(100,Math.max(0,(s.advertising.value/(result.maxAd||1))*100))}%`}}/></div><strong>{money(result.maxAd,s.currency)}</strong><div className="input-note">Increase or decrease your ad cost above to test the boundary.</div></div></div></section>
+    {tab === 'scenarios' && <div className="feature-grid"><div className="card panel"><h2>{tr('whatIf')}</h2><p className="section-copy">Change a few levers and immediately see the estimated profit move.</p><div className="form-grid"><div className="field"><label>Price</label><input type="number" min="0" value={s.sellingPrice} onChange={(e) => update('sellingPrice', clamp(Number(e.target.value)))} /></div><div className="field"><label>Ad spend</label><input type="number" min="0" value={s.advertising.value} onChange={(e) => updateCost('advertising', { value: clamp(Number(e.target.value)) })} /></div><div className="field"><label>Product cost</label><input type="number" min="0" value={s.productCost} onChange={(e) => update('productCost', clamp(Number(e.target.value)))} /></div><div className="field"><label>Shipping</label><input type="number" min="0" value={s.shipping.value} onChange={(e) => updateCost('shipping', { value: clamp(Number(e.target.value)) })} /></div></div><div className="whatif-card"><strong>{money(result.profit, s.currency)} estimated profit</strong><p className="input-note">Results update without a page reload.</p></div><h3>Target pricing</h3><div className="form-grid"><div className="field"><label>{tr('targetProfit')}</label><input type="number" min="0" value={targetProfit} onChange={(e) => setTargetProfit(clamp(Number(e.target.value)))} /></div><div className="field"><label>{tr('targetMargin')}</label><input type="number" min="0" max="99" value={targetMargin} onChange={(e) => setTargetMargin(clamp(Number(e.target.value), 0, 99))} /></div></div><div className="metrics"><div className="metric"><small>{tr('targetPrice')}</small><strong>{Number.isFinite(result.targetPrice) ? money(result.targetPrice, s.currency) : 'N/A'}</strong></div><div className="metric"><small>{tr('targetMarginPrice')}</small><strong>{Number.isFinite(result.targetMarginPrice) ? money(result.targetMarginPrice, s.currency) : 'N/A'}</strong></div></div></div><div className="card panel"><h2>{tr('stress')}</h2><p className="section-copy">Downside simulations are scenarios, not predictions.</p><div className="scenario-grid">{stress.map((x) => <div className="scenario" key={x.label}><strong>{x.label}</strong><span className={`badge ${x.profit > 0 ? 'good' : 'bad'}`}>{money(x.profit, s.currency)}</span></div>)}</div><div className="notice" style={{ marginTop: 14 }}><strong>Product survives {stress.slice(1).filter((x) => x.profit > 0).length}/{stress.length - 1} downside cases.</strong> The combined scenario is deliberately harsh.</div></div></div>}
 
-    <section className="section"><h2 className="section-title">Platform Battle</h2><p className="section-copy">Same product assumptions, different marketplace fee assumption.</p><div className="card panel"><table className="compare-table"><thead><tr><th>Platform</th><th>Estimated profit</th><th>Margin</th></tr></thead><tbody>{comparisons.map((r,i)=><tr key={r.platform}><td><strong>{r.platform}{i===0?' 🥇':''}</strong></td><td>{money(r.profit,s.currency)}</td><td>{r.margin.toFixed(1)}%</td></tr>)}</tbody></table><p className="input-note">MVP demo fee assumptions; verify official fee schedules for live decisions.</p></div></section>
+    {tab === 'compare' && <div className="feature-grid"><div className="card panel"><h2>{tr('platformBattle')}</h2><p className="section-copy">Same product assumptions across supported platforms for this country.</p><div className="table-wrap"><table className="compare-table"><thead><tr><th>Platform</th><th>Fee</th><th>Profit</th><th>Margin</th><th>Score</th></tr></thead><tbody>{comparisons.map((r, i) => { const score = scoreProfit({ ...s, platform: r.platform, platformFee: cost(true, r.fee.value) } as CalculatorInput); return <tr key={r.platform}><td><strong>{r.platform}{i === 0 ? ' 🏆' : ''}</strong><div className="input-note">{r.description}</div></td><td>{r.fee.value}% <span className="input-note">({r.fee.status})</span></td><td>{money(r.profit, s.currency)}</td><td>{r.margin.toFixed(1)}%</td><td>{score}/100</td></tr>; })}</tbody></table></div><div className="notice">Winner = highest estimated profit under the assumptions shown. Actual fees vary by account, category, region and seller program.</div></div><div className="card panel"><h2>{tr('countryCompare')}</h2><p className="section-copy">Same product model across the six launch countries. Country taxes and shipping remain estimates unless verified.</p><div className="country-list">{countryComparisons.map((r, i) => <div className="country-row" key={r.code}><div><strong>{r.name}{i === 0 ? ' 🏆' : ''}</strong><div className="input-note">{r.platform} • {r.currency}</div></div><div className="country-values"><strong>{money(r.profit, r.currency)}</strong><span>{r.margin.toFixed(1)}%</span></div></div>)}</div></div><div className="card panel" style={{ gridColumn: '1 / -1' }}><h2>{tr('productCompare')}</h2><p className="section-copy">Compare up to five products using the same marketplace and fee assumptions.</p><div className="feature-grid">{products.map((p, i) => <div className="card feature" key={i}><div className="form-grid"><div className="field"><label>{tr('product')}</label><input value={p.name} onChange={(e) => updateProduct(i, { name: e.target.value })} /></div><div className="field"><label>{tr('sellingPrice')}</label><input type="number" min="0" value={p.price} onChange={(e) => updateProduct(i, { price: clamp(Number(e.target.value)) })} /></div><div className="field"><label>{tr('productCost')}</label><input type="number" min="0" value={p.cost} onChange={(e) => updateProduct(i, { cost: clamp(Number(e.target.value)) })} /></div><div className="field"><label>{tr('advertising')}</label><input type="number" min="0" value={p.ads} onChange={(e) => updateProduct(i, { ads: clamp(Number(e.target.value)) })} /></div></div></div>)}</div><div className="table-wrap" style={{ marginTop: 14 }}><table className="compare-table"><thead><tr><th>Rank</th><th>Product</th><th>Profit</th><th>Margin</th><th>Score</th><th>Verdict</th></tr></thead><tbody>{productComparison.map((p, i) => <tr key={p.name + i}><td>{i + 1}</td><td><strong>{p.name}</strong></td><td>{money(p.profit, s.currency)}</td><td>{p.margin.toFixed(1)}%</td><td>{p.score}/100</td><td><span className={`badge ${p.verdict.tone}`}>{p.verdict.label}</span></td></tr>)}</tbody></table></div></div></div>}
 
-    <section className="section"><h2 className="section-title">Stress Test My Product</h2><div className="card panel"><div className="scenario-grid">{stress.mapped.map((x)=><div className="scenario" key={x.label}><strong>{x.label}</strong><span className={`badge ${x.profit>0?'good':'bad'}`}>{money(x.profit,s.currency)}</span></div>)}</div><div className="notice" style={{marginTop:12}}>Product survives <strong>{stress.passed}/5</strong> modeled scenarios. This is a simulation, not a guarantee.</div></div></section>
-
-    <section className="section" id="feedback"><div className="card feedback-box"><h2 className="section-title">💡 Was this useful?</h2><p className="section-copy">Your feedback decides what gets added next.</p><div className="actions"><button className="small-btn" onClick={()=>{setFeedback('yes');setFeedbackDetail('')}}>👍 Yes</button><button className="small-btn" onClick={()=>setFeedback('no')}>👎 No</button></div>{feedback==='no' && <div style={{marginTop:12}}><select value={feedbackDetail} onChange={e=>setFeedbackDetail(e.target.value)}><option value="">What was missing?</option><option>Fee was incorrect</option><option>Result was confusing</option><option>Missing platform</option><option>Missing country</option><option>Missing feature</option><option>Other</option></select><button className="small-btn" style={{marginLeft:8}} disabled={!feedbackDetail} onClick={submitFeedback}>Submit</button></div>}{feedback==='yes' && <button className="small-btn" style={{marginTop:12}} onClick={submitFeedback}>Send positive feedback</button>}</div></section>
-  </>;
+    {tab === 'seller' && <SellerAnalyzer currency={s.currency} />}
+  </div>;
 }

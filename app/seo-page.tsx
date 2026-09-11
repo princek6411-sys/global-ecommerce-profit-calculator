@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Calculator from '@/components/Calculator';
-export default function SEOPage({ title, description, platform }:{title:string;description:string;platform?:any}){
+import type { Platform } from '@/lib/config';
+export default function SEOPage({ title, description, platform }:{title:string;description:string;platform?: Platform}){
  return <><header className="site-header"><div className="container nav"><Link className="brand" href="/">ProfitPilot</Link><div className="nav-links"><Link href="/#calculator">Calculator</Link><Link href="/roadmap">Roadmap</Link></div></div></header><main><section className="container section"><span className="eyebrow">Free tool</span><h1>{title}</h1><p className="lede">{description}</p><Calculator initialPlatform={platform}/><div className="card panel" style={{marginTop:18}}><h2>How this calculator works</h2><p className="section-copy">Enter selling price and costs, then review estimated net profit, margin, ROI, break-even price and ad room. Adjust assumptions to model realistic scenarios.</p><h3>Important note</h3><p className="section-copy">Marketplace fees, taxes, shipping, refunds and seller-specific programs can change. This MVP uses editable demo assumptions until verified official fee data is connected.</p></div></section></main></>;
 }
