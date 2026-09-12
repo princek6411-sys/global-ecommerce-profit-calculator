@@ -48,7 +48,7 @@ export default function Home() {
       <div className="container nav">
         <Link className="brand" href="/"><span className="brand-mark">P</span>ProfitPilot</Link>
         <nav className="nav-links" aria-label="Primary navigation">
-          <a href="#calculator">Calculator</a><a href="#features">Why it works</a><a href="#seller">Seller tools</a><Link href="/roadmap">Roadmap</Link>
+          <a href="#calculator">Calculator</a><a href="#features">Why it works</a><a href="#seller">Seller tools</a><Link href="/platform-intelligence">Platform Intelligence</Link><Link href="/roadmap">Roadmap</Link>
         </nav>
         <a className="nav-cta" href="#calculator">Calculate Profit →</a>
       </div>

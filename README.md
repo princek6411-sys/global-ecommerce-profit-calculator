@@ -53,3 +53,7 @@ Display currency is independent from the marketplace operating currency. Referen
 
 ## Platform intelligence
 The project includes `lib/platform-intelligence.ts` as a research/provenance layer. It does not pretend to be live marketplace integration and it does not replace the canonical calculation engine. See `docs/PLATFORM_INTELLIGENCE.md` and `docs/PLATFORM_DATA_TRUST.md`.
+
+## Platform Intelligence
+
+Open `/platform-intelligence` for the free, research-backed seller capability layer. It is sourced from the supplied September 2026 A–Z verified research report and clearly separates active capabilities, scoped economics, lifecycle/deprecated features, and research gaps.
