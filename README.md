@@ -57,3 +57,7 @@ The project includes `lib/platform-intelligence.ts` as a research/provenance lay
 ## Platform Intelligence
 
 Open `/platform-intelligence` for the free, research-backed seller capability layer. It is sourced from the supplied September 2026 A–Z verified research report and clearly separates active capabilities, scoped economics, lifecycle/deprecated features, and research gaps.
+
+## Live Data — Shopify first
+
+Open `/connections` for the first live-data vertical slice. The Shopify connector uses server-side authorization/data access patterns and refuses to fake a live connection when credentials or durable persistence are unavailable. See `docs/LIVE_DATA_VERTICAL_SLICE.md`.

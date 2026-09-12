@@ -35,3 +35,26 @@ Implemented the researched Platform Intelligence layer without creating a second
 - Kept Meesho and TikTok Shop calculator support separate from research verification.
 - Decision Tools now surfaces active capability counts, economic facts and research boundaries.
 - Added automated tests for platform coverage, lifecycle data, source integrity and alias handling.
+
+## Live Data Vertical Slice — 2026-09-12
+
+### CURRENT
+- No production database/user-auth persistence layer exists in the supplied ZIP.
+- No marketplace OAuth connector existed before this pass.
+- Only existing FX/health API routes were present.
+- Seller intelligence remained primarily manual/CSV-driven.
+
+### NEW SAFE INTEGRATION POINTS
+- `lib/commerce/*` for canonical commerce types and conservative reconciliation.
+- `lib/integrations/shopify/*` for provider-specific auth/client/runtime code.
+- `app/api/shopify/*` for server-side HTTP boundaries.
+- `/connections` for seller-facing connection/sync UX.
+
+### KNOWN LIMITATION
+A real OAuth exchange can occur only after Shopify app credentials are configured, but token persistence is intentionally BLOCKED until a database/user-auth layer is added. This prevents insecure token storage in an ephemeral serverless filesystem or browser storage.
+
+### DESIRED STATE
+Browser → authenticated ProfitPilot user → durable `MarketplaceConnection` → encrypted/managed secrets → sync jobs → raw source records → canonical commerce data → existing calculation engine → Seller Intelligence.
+
+### MIGRATION PATH
+Add a database + merchant identity layer, then implement adapters for `MarketplaceConnection`, `SyncJob`, `WebhookEvent`, raw-source references and token refresh. The current Shopify provider client and normalization code can then remain provider-specific while persistence becomes infrastructure-specific.
