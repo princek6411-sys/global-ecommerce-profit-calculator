@@ -15,3 +15,9 @@ Operating/marketplace currency and display/reporting currency are separate conce
 
 ## Data trust
 Marketplace fee values marked `example` remain assumptions. The UI must not label those values as official/current without source verification.
+
+## Platform Intelligence Pass — 2026-09-12
+
+The platform-intelligence layer is implemented separately from the calculator configuration. Verified research metadata covers the ten platforms in the supplied A–Z report. Existing calculator-supported platforms not covered by that report (for example Meesho and TikTok Shop) are explicitly marked unverified within the research layer rather than being falsely upgraded to verified.
+
+No live API connectors were introduced. No universal fee schedule was manufactured from the report. The canonical calculation engine remains the authority for numerical profit results.

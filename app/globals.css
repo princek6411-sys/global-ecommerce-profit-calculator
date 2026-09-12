@@ -130,3 +130,10 @@
   .decision-brief { grid-template-columns: 1fr; }
   .decision-number strong { font-size: 1.7rem; }
 }
+
+.platform-research-grid{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border,#e5e7eb)}
+.platform-research-grid>strong{font-size:.86rem;letter-spacing:.04em;text-transform:uppercase}
+.platform-research-item{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.55)}
+.platform-research-item summary{cursor:pointer;font-weight:650}
+.platform-research-item p{margin:.45rem 0 0;color:var(--muted,#667085);font-size:.88rem;line-height:1.45}
+.platform-research-item small{display:block;margin-top:.35rem;color:var(--muted,#667085);line-height:1.4}

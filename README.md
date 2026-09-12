@@ -50,3 +50,6 @@ The settlement analyzer processes uploaded CSV text locally in the browser in th
 USD, EUR, INR, JPY, GBP, CAD, AUD, AED and SAR.
 
 Display currency is independent from the marketplace operating currency. Reference FX rates are fetched dynamically from the configured provider and cached locally for resilience; historical settlement conversion is treated separately from live display conversion.
+
+## Platform intelligence
+The project includes `lib/platform-intelligence.ts` as a research/provenance layer. It does not pretend to be live marketplace integration and it does not replace the canonical calculation engine. See `docs/PLATFORM_INTELLIGENCE.md` and `docs/PLATFORM_DATA_TRUST.md`.
