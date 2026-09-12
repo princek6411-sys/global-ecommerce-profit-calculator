@@ -83,8 +83,40 @@ const PRODUCT_QUERY = `#graphql
   }
 `;
 
-async function page<T>(shop: string, accessToken: string, query: string, variables: Record<string, unknown>, selector: (data: any) => { nodes: T[]; pageInfo: ShopifyPageInfo }): Promise<{ nodes: T[]; pageInfo: ShopifyPageInfo }> {
-  const data = await shopifyGraphql<any>(shop, accessToken, query, variables);
+type ShopifyConnection<T> = {
+  nodes: T[];
+  pageInfo: ShopifyPageInfo;
+};
+
+type ShopifyOrdersQueryData = {
+  orders: ShopifyConnection<ShopifyOrderNode>;
+};
+
+type ShopifyProductRecord = {
+  id: string;
+  title: string;
+  handle: string;
+  status: string;
+  variants: Array<{
+    id: string;
+    sku: string | null;
+    price: string;
+    inventoryQuantity: number;
+  }>;
+};
+
+type ShopifyProductsQueryData = {
+  products: ShopifyConnection<ShopifyProductRecord>;
+};
+
+async function page<TData, TNode>(
+  shop: string,
+  accessToken: string,
+  query: string,
+  variables: Record<string, unknown>,
+  selector: (data: TData) => ShopifyConnection<TNode>
+): Promise<ShopifyConnection<TNode>> {
+  const data: TData = await shopifyGraphql<TData>(shop, accessToken, query, variables);
   return selector(data);
 }
 
@@ -92,7 +124,13 @@ export async function fetchShopifyOrders(shop: string, accessToken: string, maxP
   const results: ShopifyOrderNode[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < maxPages; i += 1) {
-    const result = await page<ShopifyOrderNode>(shop, accessToken, ORDER_QUERY, { first: 100, after: cursor }, (data) => data.orders);
+    const result: ShopifyConnection<ShopifyOrderNode> = await page<ShopifyOrdersQueryData, ShopifyOrderNode>(
+      shop,
+      accessToken,
+      ORDER_QUERY,
+      { first: 100, after: cursor },
+      (data) => data.orders
+    );
     results.push(...result.nodes);
     if (!result.pageInfo.hasNextPage) break;
     cursor = result.pageInfo.endCursor;
@@ -100,11 +138,21 @@ export async function fetchShopifyOrders(shop: string, accessToken: string, maxP
   return results;
 }
 
-export async function fetchShopifyProducts(shop: string, accessToken: string, maxPages = 5): Promise<Array<{ id: string; title: string; handle: string; status: string; variants: Array<{ id: string; sku: string | null; price: string; inventoryQuantity: number }> }>> {
-  const results: Array<{ id: string; title: string; handle: string; status: string; variants: Array<{ id: string; sku: string | null; price: string; inventoryQuantity: number }> }> = [];
+export async function fetchShopifyProducts(
+  shop: string,
+  accessToken: string,
+  maxPages = 5
+): Promise<ShopifyProductRecord[]> {
+  const results: ShopifyProductRecord[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < maxPages; i += 1) {
-    const result = await page<any>(shop, accessToken, PRODUCT_QUERY, { first: 100, after: cursor }, (data) => data.products);
+    const result: ShopifyConnection<ShopifyProductRecord> = await page<ShopifyProductsQueryData, ShopifyProductRecord>(
+      shop,
+      accessToken,
+      PRODUCT_QUERY,
+      { first: 100, after: cursor },
+      (data) => data.products
+    );
     results.push(...result.nodes);
     if (!result.pageInfo.hasNextPage) break;
     cursor = result.pageInfo.endCursor;

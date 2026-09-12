@@ -74,3 +74,26 @@ The following are intentionally not faked or prematurely implemented:
 - Shopify public App Store apps: mandatory compliance webhooks for customer/shop data requests and redaction.
 
 See `docs/LIVE_DATA_DEEP_RESEARCH.md` for URLs.
+## Build Fix Applied — 2026-09-12
+
+The Vercel failure reported on this ZIP was traced to a TypeScript generic-inference cycle in `lib/integrations/shopify/client.ts`. The pagination helper previously declared `page<T>(...)` with a selector using `any`; TypeScript inferred the `result` initializer as implicitly-`any` at the order-sync call site.
+
+Fix applied:
+- Introduced `ShopifyConnection<T>` for paginated GraphQL connections.
+- Introduced explicit response types for order and product GraphQL results.
+- Refactored the pagination helper to `page<TData, TNode>(...)`.
+- Added explicit `ShopifyConnection<ShopifyOrderNode>` and `ShopifyConnection<ShopifyProductRecord>` result annotations.
+- Removed the `any`-based pagination inference that caused the reported build failure.
+
+Targeted strict TypeScript validation of the modified Shopify client and its config dependency passes with the project's strict compiler settings. A full repository `npm run build` could not be executed in this environment because dependency installation timed out; therefore full-build status remains `NOT RUN / BLOCKED`, not `PASSED`.
+
+## Shopify Research Re-Verification — 2026-09-12
+
+Official Shopify documentation confirms `2026-07` is the latest stable Admin API version as of this date and is supported through at least July 1, 2027; Shopify recommends explicitly versioning requests. Public apps using GraphQL Admin API must use expiring offline access tokens, and Shopify's authorization-code flow supports `expiring=1`; access tokens should be stored with `expires_in` and refresh-token metadata.
+
+Sources:
+- https://shopify.dev/docs/api/usage/versioning
+- https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens
+- https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens
+- https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
+
