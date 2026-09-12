@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SellerAnalyzer from '@/components/SellerAnalyzer';
+import DecisionTools from '@/components/DecisionTools';
 import { categories, countries, currencies, getCountry, getDefaultPlatform, getPlatformsForCountry, getPlatformConfig, languages, platformConfigs, type Category, type CountryCode, type CurrencyCode, type LanguageCode, type Platform } from '@/lib/config';
 import { type CalculatorInput, type CostConfig, calculateAdvertising, calculateBreakEvenPrice, calculateLineItems, calculateMaximumAdSpend, calculateNetProfit, calculateProfitMargin, calculateROI, calculateTargetMarginPrice, calculateTargetProfitPrice, decisionForScore, scoreProfit, calculateTotalExpenses } from '@/lib/calculator';
 import { t } from '@/lib/i18n';
@@ -34,7 +35,7 @@ export default function Calculator({ initialPlatform = 'Amazon' }: Props) {
   const [targetMargin, setTargetMargin] = useState(25);
   const [saved, setSaved] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
-  const [tab, setTab] = useState<'calculator' | 'scenarios' | 'compare' | 'seller'>('calculator');
+  const [tab, setTab] = useState<'calculator' | 'decisions' | 'seller'>('calculator');
   const [products, setProducts] = useState<ProductDraft[]>([
     { name: 'Product A', price: 49.99, cost: 15, ads: 8 },
     { name: 'Product B', price: 59.99, cost: 22, ads: 10 },
@@ -224,7 +225,7 @@ export default function Calculator({ initialPlatform = 'Amazon' }: Props) {
     </div>
 
     <div className="tabbar" role="tablist" aria-label="Calculator sections">
-      {([["calculator", tr('calculator')], ["scenarios", tr('scenarios')], ["compare", tr('compareTab')], ["seller", tr('seller')]] as const).map(([id, label]) => <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}>{label}</button>)}
+      {([["calculator", tr('calculator')], ["decisions", 'Decision tools'], ["seller", tr('seller')]] as const).map(([id, label]) => <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)} role="tab" aria-selected={tab === id}>{label}</button>)}
     </div>
 
     {tab === 'calculator' && <div className="calculator">
@@ -267,12 +268,17 @@ export default function Calculator({ initialPlatform = 'Amazon' }: Props) {
       </div>
     </div>}
 
-    {tab === 'scenarios' && <div className="feature-grid"><div className="card panel"><h2>{tr('whatIf')}</h2><p className="section-copy">Change a few levers and immediately see the estimated profit move.</p><div className="form-grid"><div className="field"><label>Price</label><input type="number" min="0" value={s.sellingPrice} onChange={(e) => update('sellingPrice', clamp(Number(e.target.value)))} /></div><div className="field"><label>Ad spend</label><input type="number" min="0" value={s.advertising.value} onChange={(e) => updateCost('advertising', { value: clamp(Number(e.target.value)) })} /></div><div className="field"><label>Product cost</label><input type="number" min="0" value={s.productCost} onChange={(e) => update('productCost', clamp(Number(e.target.value)))} /></div><div className="field"><label>Shipping</label><input type="number" min="0" value={s.shipping.value} onChange={(e) => updateCost('shipping', { value: clamp(Number(e.target.value)) })} /></div></div><div className="whatif-card"><strong>{displayMoney(result.profit)} estimated profit</strong><p className="input-note">Results update without a page reload.</p></div><h3>Target pricing</h3><div className="form-grid"><div className="field"><label>{tr('targetProfit')}</label><input type="number" min="0" value={targetProfit} onChange={(e) => setTargetProfit(clamp(Number(e.target.value)))} /></div><div className="field"><label>{tr('targetMargin')}</label><input type="number" min="0" max="99" value={targetMargin} onChange={(e) => setTargetMargin(clamp(Number(e.target.value), 0, 99))} /></div></div><div className="metrics"><div className="metric"><small>{tr('targetPrice')}</small><strong>{result.targetPriceValid ? displayMoney(result.targetPrice) : 'N/A'}</strong></div><div className="metric"><small>{tr('targetMarginPrice')}</small><strong>{result.targetMarginPriceValid ? displayMoney(result.targetMarginPrice) : 'N/A'}</strong></div></div>
-          <h3>Price sensitivity</h3>
-          <div className="scenario-grid">{[-10, -5, 0, 5, 10].map((delta) => { const next = { ...(s as CalculatorInput), sellingPrice: s.sellingPrice * (1 + delta / 100) }; const calc = calculateAll(next, s.currency, targetProfit, targetMargin); return <div className="scenario" key={delta}><strong>{delta === 0 ? 'Current' : `${delta > 0 ? '+' : ''}${delta}%`}</strong><span className={`badge ${calc.trueProfit.amount > 0 ? 'good' : 'bad'}`}>{displayMoney(calc.trueProfit.amount)}</span><small>{calc.margin.toFixed(1)}%</small></div>; })}</div>
-        </div><div className="card panel"><h2>{tr('stress')}</h2><p className="section-copy">Downside simulations are scenarios, not predictions.</p><div className="scenario-grid">{stress.map((x) => <div className="scenario" key={x.label}><strong>{x.label}</strong><span className={`badge ${x.profit > 0 ? 'good' : 'bad'}`}>{displayMoney(x.profit)}</span></div>)}</div><div className="notice" style={{ marginTop: 14 }}><strong>Product survives {stress.slice(1).filter((x) => x.profit > 0).length}/{stress.length - 1} downside cases.</strong> The combined scenario is deliberately harsh.</div></div></div>}
-
-    {tab === 'compare' && <div className="feature-grid"><div className="card panel"><h2>{tr('platformBattle')}</h2><p className="section-copy">Same product assumptions across supported platforms for this country.</p><div className="table-wrap"><table className="compare-table"><thead><tr><th>Platform</th><th>Fee</th><th>Profit</th><th>Margin</th><th>Score</th></tr></thead><tbody>{comparisons.map((r, i) => { return <tr key={r.platform}><td><div className="compare-platform-name"><BrandIcon platform={r.platform} size={20} label={r.platform} /><strong>{r.platform}{i === 0 ? ' 🏆' : ''}</strong></div><div className="input-note">{r.description}</div></td><td>{r.fee.value}% <span className="input-note">({r.fee.status})</span></td><td>{displayMoney(r.profit)}</td><td>{r.margin.toFixed(1)}%</td><td>{r.score}/100</td></tr>; })}</tbody></table></div><div className="notice">Winner = highest estimated profit under the assumptions shown. Actual fees vary by account, category, region and seller program.</div></div><div className="card panel"><h2>{tr('countryCompare')}</h2><p className="section-copy">Same product model across the six launch countries. Country taxes and shipping remain estimates unless verified.</p><div className="country-list">{countryComparisons.map((r, i) => <div className="country-row" key={r.code}><div><div className="compare-country-name"><FlagIcon country={r.code} /><strong>{r.name}{i === 0 ? ' 🏆' : ''}</strong></div><div className="input-note">{r.platform} • {r.currency}</div></div><div className="country-values"><strong>{r.displayProfit === undefined ? '—' : money(r.displayProfit, s.displayCurrency)}</strong><span>{r.margin.toFixed(1)}%</span></div></div>)}</div></div><div className="card panel" style={{ gridColumn: '1 / -1' }}><h2>{tr('productCompare')}</h2><p className="section-copy">Compare up to five products using the same marketplace and fee assumptions.</p><div className="feature-grid">{products.map((p, i) => <div className="card feature" key={i}><div className="form-grid"><div className="field"><label>{tr('product')}</label><input value={p.name} onChange={(e) => updateProduct(i, { name: e.target.value })} /></div><div className="field"><label>{tr('sellingPrice')}</label><input type="number" min="0" value={p.price} onChange={(e) => updateProduct(i, { price: clamp(Number(e.target.value)) })} /></div><div className="field"><label>{tr('productCost')}</label><input type="number" min="0" value={p.cost} onChange={(e) => updateProduct(i, { cost: clamp(Number(e.target.value)) })} /></div><div className="field"><label>{tr('advertising')}</label><input type="number" min="0" value={p.ads} onChange={(e) => updateProduct(i, { ads: clamp(Number(e.target.value)) })} /></div></div></div>)}</div><div className="table-wrap" style={{ marginTop: 14 }}><table className="compare-table"><thead><tr><th>Rank</th><th>Product</th><th>Profit</th><th>Margin</th><th>Score</th><th>Verdict</th></tr></thead><tbody>{productComparison.map((p, i) => <tr key={p.name + i}><td>{i + 1}</td><td><strong>{p.name}</strong></td><td>{displayMoney(p.profit)}</td><td>{p.margin.toFixed(1)}%</td><td>{p.score}/100</td><td><span className={`badge ${p.verdict.tone}`}>{p.verdict.label}</span></td></tr>)}</tbody></table></div></div></div>}
+    {tab === 'decisions' && <DecisionTools
+      input={s as CalculatorInput}
+      currency={s.currency}
+      displayCurrency={s.displayCurrency}
+      result={{ profit: result.profit, margin: result.margin }}
+      feeStatus={getPlatformConfig(s.platform, s.country)?.fee.status ?? 'unavailable'}
+      platformRows={comparisons}
+      countryRows={countryComparisons}
+      products={products}
+      onProductChange={updateProduct}
+    />}
 
     {tab === 'seller' && <SellerAnalyzer currency={s.displayCurrency} />}
   </div>;
