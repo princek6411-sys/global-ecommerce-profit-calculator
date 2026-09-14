@@ -61,3 +61,11 @@ Open `/platform-intelligence` for the free, research-backed seller capability la
 ## Live Data — Shopify first
 
 Open `/connections` for the first live-data vertical slice. The Shopify connector uses server-side authorization/data access patterns and refuses to fake a live connection when credentials or durable persistence are unavailable. See `docs/LIVE_DATA_VERTICAL_SLICE.md`.
+
+## Economic Intelligence Architecture
+
+ProfitPilot is designed around one shared economic engine rather than platform-specific profit engines:
+
+`REAL DATA → NORMALIZE → RECONCILE → TRUE PROFIT → DIAGNOSE → ACTION → EXPERIMENT → MONITOR → LEARN`
+
+Marketplace integrations translate native platform data into a common economic model. Unsupported or unverified capabilities are explicitly labeled rather than simulated.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { platformAdapterRegistry } from '@/lib/commerce/platform-adapters';
 
 type ShopifyStatus = {
   status: string;
@@ -79,6 +80,25 @@ export default function ConnectionsPage() {
           </div>
           <div className="money-flow-footer"><span>{syncResult.summary.status}</span><span>Unmapped profit inputs remain visible instead of being guessed.</span></div>
         </div>}
+      </section>
+
+      <section className="card panel" style={{ marginTop: 24 }}>
+        <div>
+          <div className="eyebrow">PLATFORM COVERAGE</div>
+          <h2>One economic brain, different data sources</h2>
+          <p className="section-copy">A platform being listed here does not mean ProfitPilot has invented a live connector. Capability and connection states stay explicit so sellers can see what is real, partial or still requires access.</p>
+        </div>
+        <div className="feature-grid" style={{ marginTop: 20 }}>
+          {Object.values(platformAdapterRegistry).map((item) => (
+            <div className="card panel" key={item.platform}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                <strong>{item.platform}</strong>
+                <span className="trust-chip">{item.integrationState.replace(/_/g, ' ')}</span>
+              </div>
+              <p className="section-copy" style={{ marginTop: 8 }}>{item.notes[0]}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </main>
   );
