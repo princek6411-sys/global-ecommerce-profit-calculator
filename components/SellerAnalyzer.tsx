@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { analyzeSettlementCSV, buildCSVReport, type CSVAnalysis } from '@/lib/csv';
 import { formatMoney } from '@/lib/money';
 import type { CurrencyCode } from '@/lib/config';
+import { buildEconomicSnapshotFromCSV, deriveEconomicDecision } from '@/lib/commerce/economic-core';
 
 type Props = { currency: CurrencyCode };
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -17,6 +18,8 @@ export default function SellerAnalyzer({ currency: displayCurrency }: Props) {
   const reportingCurrency = sourceCurrency ?? displayCurrency;
   const money = (v: number) => formatMoney(Number.isFinite(v) ? v : 0, reportingCurrency);
   const lossMakers = useMemo(() => analysis?.skuSummary.filter((x) => x.profit < 0).sort((a, b) => a.profit - b.profit).slice(0, 5) ?? [], [analysis]);
+  const economicSnapshot = useMemo(() => analysis ? buildEconomicSnapshotFromCSV(analysis) : null, [analysis]);
+  const economicDecision = useMemo(() => economicSnapshot ? deriveEconomicDecision(economicSnapshot) : null, [economicSnapshot]);
   const biggestLeak = useMemo(() => {
     if (!analysis) return undefined;
     return Object.entries(analysis.deductionBuckets).map(([key, value]) => ({ key, value })).sort((a, b) => b.value - a.value)[0];
@@ -61,6 +64,10 @@ export default function SellerAnalyzer({ currency: displayCurrency }: Props) {
           <div className="metric"><small>Return orders</small><strong>{analysis.totals.returnOrders}</strong></div>
           <div className="metric"><small>RTO orders</small><strong>{analysis.totals.rtoOrders}</strong></div>
         </div>
+        {economicSnapshot && <div className="feature-grid" style={{ marginTop: 12 }}>
+          <div className="card feature"><span className="eyebrow">ECONOMIC INTELLIGENCE</span><h3>Evidence → diagnosis → action</h3>{economicDecision?.action ? <><div className="notice"><strong>{economicDecision.action.trigger}</strong><br />{economicDecision.action.evidence}</div><div className="decision-reason"><strong>Why</strong><p>{economicDecision.action.diagnosis}</p></div><div className="decision-next"><strong>Next test</strong><p>{economicDecision.action.action}</p><small>{economicDecision.action.measurement}</small></div></> : <div className="notice">Not enough evidence for a safe action recommendation.</div>}</div>
+          <div className="card feature"><span className="eyebrow">DATA TRUST</span><h3>{economicSnapshot.dataQuality.complete ? 'Evidence is complete for this model' : 'Evidence has known gaps'}</h3><div className="metrics"><div className="metric"><small>Source</small><strong>Seller CSV</strong></div><div className="metric"><small>Profit basis</small><strong>Estimated realized</strong></div><div className="metric"><small>Confidence</small><strong>{Math.round(economicSnapshot.confidence * 100)}%</strong></div><div className="metric"><small>Unclassified</small><strong>{money(economicSnapshot.dataQuality.unclassifiedAmount)}</strong></div></div>{economicDecision?.alerts.length ? <div className="notice" style={{ marginTop: 12 }}><strong>WATCH</strong><br />{economicDecision.alerts.map((alert) => <div key={alert.key} style={{ marginTop: 6 }}><strong>{alert.whatChanged}</strong> {alert.action}</div>)}</div> : <p className="input-note">No monitoring warning was generated from the imported snapshot.</p>}</div>
+        </div>}
         <div className="feature-grid" style={{ marginTop: 12 }}>
           <div className="card feature"><span className="eyebrow">PROFIT BASIS</span><h3>Why this profit number?</h3><p>Estimated realized profit = actual settlement − product cost. It is not a complete P&amp;L when costs are missing or unmapped.</p><div className="notice"><strong>Meaning:</strong> {analysis.totals.profit < 0 ? `You're losing ${money(Math.abs(analysis.totals.profit))} under this basis.` : analysis.totals.profit > 0 ? `You're keeping approximately ${money(analysis.totals.profit)} under this basis.` : 'The imported data is at break-even under this basis.'}</div></div>
           <div className="card feature"><span className="eyebrow">BIGGEST MONEY LEAK</span><h3>{biggestLeak && biggestLeak.value > 0 ? biggestLeak.key : 'Not confidently determined'}</h3><p>{biggestLeak && biggestLeak.value > 0 ? `${biggestLeak.key} is the largest recognized monetary cost bucket at ${money(biggestLeak.value)}.` : 'Recognized cost data is insufficient to name the biggest leak confidently.'}</p><div className="decision-next"><strong>Next action</strong><p>{biggestLeak && biggestLeak.value > 0 ? 'Review this cost first, then test the largest controllable lever.' : 'Map more monetary fields before using a cost-leak recommendation.'}</p></div></div>

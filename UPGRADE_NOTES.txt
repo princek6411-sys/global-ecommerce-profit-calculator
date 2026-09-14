@@ -19,3 +19,14 @@ Validation:
 - Core TypeScript library compilation passed.
 - Core calculation smoke test passed for the documented sample math.
 - Full Next.js install/build could not be completed in this environment because npm install timed out; Vercel should run the real dependency install/build during deployment.
+
+2026-09-14 economic intelligence implementation pass
+- Added shared canonical commerce/economic metadata extensions without replacing existing calculator architecture.
+- Added economic-core.ts to connect canonical calculations to provenance, ledger, action and monitoring layers.
+- Added generic reconciliation primitives and settlement/payout reconciliation.
+- Added platform adapter contract with capability-only adapters for platforms without verified live integrations.
+- Extended integration registry so Shopify uses the existing live slice and non-live platforms remain explicitly non-live.
+- Added local experiment lifecycle and wired What-If into experiment creation/outcome recording.
+- Wired Seller Intelligence and Decision Tools into the shared economic decision layer.
+- Updated architecture/audit/status documentation.
+- Full production DB/auth/background worker and non-Shopify marketplace connectors remain explicit blockers rather than fake implementations.

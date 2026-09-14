@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { CalculatorInput, CostConfig } from '@/lib/calculator';
 import type { CurrencyCode, FeeStatus, Platform } from '@/lib/config';
 import { calculateAll } from '@/lib/calculation-engine';
@@ -8,6 +8,8 @@ import { formatMoney } from '@/lib/money';
 import { buildRecommendation, buildStressScenarios, riskState } from '@/lib/decision-tools';
 import Link from 'next/link';
 import { getPlatformDecisionContext } from '@/lib/platform-intelligence';
+import { buildEconomicSnapshotFromCalculation, deriveEconomicDecision } from '@/lib/commerce/economic-core';
+import { createExperiment, recordExperimentOutcome, type EconomicExperiment } from '@/lib/commerce/experiments';
 
 type ResultLite = { profit: number; margin: number };
 type ProductDraft = { name: string; price: number; cost: number; ads: number };
@@ -45,6 +47,10 @@ function DecisionBrief({ result, next, currency }: { result: ResultLite; next: R
 
 export default function DecisionTools(props: Props) {
   const [mode, setMode] = useState<'whatif' | 'stress' | 'compare'>('whatif');
+  const [experiment, setExperiment] = useState<EconomicExperiment | null>(null);
+  const [experimentNotice, setExperimentNotice] = useState('');
+  const [observedProfit, setObservedProfit] = useState('');
+  const [observedMargin, setObservedMargin] = useState('');
   const [whatIfField, setWhatIfField] = useState<'price' | 'cogs' | 'ads'>('price');
   const [whatIfValue, setWhatIfValue] = useState(props.input.sellingPrice);
   const recommendation = useMemo(() => buildRecommendation({ input: props.input, currency: props.currency, feeStatus: props.feeStatus }), [props.input, props.currency, props.feeStatus]);
@@ -63,6 +69,48 @@ export default function DecisionTools(props: Props) {
   const currentWhatIfValue = whatIfField === 'price' ? props.input.sellingPrice : whatIfField === 'cogs' ? props.input.productCost : props.input.advertising.value;
   const baseline = props.result.profit;
   const delta = after.trueProfit.amount - baseline;
+  const economicSnapshot = useMemo(() => buildEconomicSnapshotFromCalculation(calculateAll(props.input, props.currency)), [props.input, props.currency]);
+  const economicDecision = useMemo(() => deriveEconomicDecision(economicSnapshot), [economicSnapshot]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('profitpilot-active-experiment');
+      if (raw) setExperiment(JSON.parse(raw) as EconomicExperiment);
+    } catch { /* ignore corrupted local experiment state */ }
+  }, []);
+
+  function startExperiment() {
+    const variable = whatIfField === 'price' ? 'selling price' : whatIfField === 'cogs' ? 'COGS' : 'ad spend';
+    const next = createExperiment({
+      hypothesis: `${variable} change will improve contribution economics.`,
+      baselineProfit: baseline,
+      baselineMargin: props.result.margin,
+      expectedProfit: after.trueProfit.amount,
+      proposedChange: `${variable} changed from ${currentWhatIfValue.toFixed(2)} to ${whatIfValue.toFixed(2)} ${props.currency}.`
+    });
+    setExperiment(next);
+    if (typeof window !== 'undefined') localStorage.setItem('profitpilot-active-experiment', JSON.stringify(next));
+    setObservedProfit('');
+    setObservedMargin('');
+    setExperimentNotice('Experiment baseline saved locally. Record the observed result only after the real change has happened.');
+  }
+
+  function recordOutcome() {
+    if (!experiment) return;
+    const profit = Number(observedProfit);
+    const margin = Number(observedMargin);
+    if (!Number.isFinite(profit) || !Number.isFinite(margin)) {
+      setExperimentNotice('Enter the observed profit and margin from real post-change data.');
+      return;
+    }
+    const completed = recordExperimentOutcome(experiment, {
+      observedProfit: profit,
+      observedMargin: margin,
+      learning: 'Recorded by the seller from observed post-change data.'
+    });
+    setExperiment(completed);
+    localStorage.setItem('profitpilot-active-experiment', JSON.stringify(completed));
+    setExperimentNotice(`Observed result recorded: ${completed.result}.`);
+  }
 
   return <section className="decision-tools">
     <div className="card panel decision-tools-head">
@@ -88,7 +136,7 @@ export default function DecisionTools(props: Props) {
         <span className="eyebrow">BEFORE → AFTER → DELTA</span><div className="metrics"><div className="metric"><small>Before</small><strong className={baseline < 0 ? 'negative' : 'positive'}>{money(baseline, props.currency)}</strong></div><div className="metric"><small>After</small><strong className={after.trueProfit.amount < 0 ? 'negative' : 'positive'}>{money(after.trueProfit.amount, props.currency)}</strong></div><div className="metric"><small>Change</small><strong className={delta < 0 ? 'negative' : 'positive'}>{signed(delta, props.currency)}</strong></div></div>
         <div className="notice"><strong>Meaning:</strong> {delta > 0 ? `Profit improves by ${money(delta, props.currency)}.` : delta < 0 ? `Profit falls by ${money(Math.abs(delta), props.currency)}.` : 'The change does not alter profit.'}</div>
         <div className="decision-reason"><strong>Why</strong><p>The central calculation engine produced the before/after results using the same assumptions except for the selected variable.</p></div>
-        <div className="decision-next"><strong>Next action</strong><p>{delta > 0 ? 'Keep this scenario as a candidate and compare it with the other controllable levers.' : 'Test the opposite direction or return to the largest controllable cost.'}</p></div>
+        <div className="decision-next"><strong>Next action</strong><p>{delta > 0 ? 'Keep this scenario as a candidate and compare it with the other controllable levers.' : 'Test the opposite direction or return to the largest controllable cost.'}</p><button className="small-btn" type="button" onClick={startExperiment}>Start experiment from this scenario</button></div>
       </div>
     </div>}
 
@@ -103,6 +151,11 @@ export default function DecisionTools(props: Props) {
       <div className="card panel" style={{ gridColumn: '1 / -1' }}><span className="eyebrow">COUNTRY COMPARISON</span><h3>How does the same model change by country?</h3><div className="table-wrap"><table className="compare-table"><thead><tr><th>Country</th><th>Native profit</th><th>Margin</th><th>Currency</th><th>Reporting profit</th></tr></thead><tbody>{props.countryRows.map((r) => <tr key={r.code}><td><strong>{r.name}</strong><div className="input-note">{r.platform}</div></td><td>{money(r.profit, r.currency)}</td><td>{r.margin.toFixed(1)}%</td><td>{r.currency}</td><td>{r.displayProfit === undefined ? 'Unavailable' : money(r.displayProfit, props.displayCurrency)}</td></tr>)}</tbody></table></div><p className="input-note">Native/local economics are the primary comparison. Reporting currency is only a converted view and may use a reference FX rate.</p></div>
     </div>}
 
+    <div className="feature-grid" style={{ marginTop: 14 }}>
+      <div className="card panel"><span className="eyebrow">ECONOMIC INTELLIGENCE</span><h3>Evidence → diagnosis → action</h3><p className="section-copy">The decision engine now consumes the same canonical calculation output used by the calculator.</p>{economicDecision.action ? <><div className="notice"><strong>{economicDecision.action.trigger}</strong><br />{economicDecision.action.evidence}</div><div className="decision-reason"><strong>Why</strong><p>{economicDecision.action.diagnosis}</p></div><div className="decision-next"><strong>Next test</strong><p>{economicDecision.action.action}</p><small>{economicDecision.action.measurement}</small></div></> : <div className="notice">Not enough economic evidence to generate a safe recommendation.</div>}</div>
+      <div className="card panel"><span className="eyebrow">DATA HEALTH</span><h3>What the engine knows</h3><div className="metrics"><div className="metric"><small>Profit basis</small><strong>Calculated</strong></div><div className="metric"><small>Source</small><strong>Canonical engine</strong></div><div className="metric"><small>Confidence</small><strong>{Math.round(economicSnapshot.confidence * 100)}%</strong></div><div className="metric"><small>Unclassified</small><strong>{money(economicSnapshot.dataQuality.unclassifiedAmount, props.currency)}</strong></div></div>{economicDecision.alerts.length > 0 && <div className="notice" style={{ marginTop: 12 }}><strong>WATCH</strong><br />{economicDecision.alerts.map((alert) => <div key={alert.key} style={{ marginTop: 6 }}><strong>{alert.whatChanged}</strong> {alert.action}</div>)}</div>}<p className="input-note">This layer does not invent missing marketplace data. It exposes the evidence and uncertainty available to the calculator.</p></div>
+    </div>
+    {experiment && <div className="card panel" style={{ marginTop: 14 }}><span className="eyebrow">EXPERIMENT</span><h3>{experiment.hypothesis}</h3><p>{experiment.proposedChange}</p><div className="notice"><strong>Baseline:</strong> {money(experiment.baselineProfit, props.currency)} · {experiment.baselineMargin.toFixed(1)}% margin<br /><strong>Scenario expectation:</strong> {experiment.expectedProfit === undefined ? 'Not set' : money(experiment.expectedProfit, props.currency)}{experiment.observedProfit !== undefined && <><br /><strong>Observed:</strong> {money(experiment.observedProfit, props.currency)} · {(experiment.observedMargin ?? 0).toFixed(1)}% · {experiment.result}</>}</div>{experiment.status !== 'COMPLETED' && <div className="form-grid" style={{ marginTop: 10 }}><div className="field"><label>Observed profit ({props.currency})</label><input type="number" step="0.01" value={observedProfit} onChange={(e) => setObservedProfit(e.target.value)} placeholder="Enter real result" /></div><div className="field"><label>Observed margin (%)</label><input type="number" step="0.1" value={observedMargin} onChange={(e) => setObservedMargin(e.target.value)} placeholder="Enter real result" /></div><button className="small-btn" type="button" onClick={recordOutcome}>Record observed outcome</button></div>}<p className="input-note">{experimentNotice}</p></div>}
     <DecisionBrief result={props.result} next={recommendation} currency={props.currency} />
   </section>;
 }

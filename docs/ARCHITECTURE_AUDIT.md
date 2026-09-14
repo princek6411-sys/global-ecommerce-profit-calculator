@@ -1,60 +1,47 @@
 # ProfitPilot Architecture Audit
 
-This document records the refactor boundary for the ProfitPilot upgrade.
+Date: 2026-09-14
 
-## Current source of truth
-- `lib/calculator.ts` remains the low-level legacy calculation implementation to preserve regression behavior.
-- `lib/calculation-engine.ts` is the new single orchestration layer used by upgraded result surfaces.
-- `lib/money.ts` owns typed money values and formatting.
-- `lib/fx.ts` owns exchange-rate fetching, cache, fallback, and metadata.
-- `lib/config.ts` owns country, currency, language, marketplace, and fee metadata.
-- `lib/csv.ts` remains the browser-local settlement/SKU normalization layer.
+## Repository source of truth
 
-## Critical invariant
-Operating/marketplace currency and display/reporting currency are separate concepts. Changing display currency converts monetary outputs but does not change the underlying economics or percentage metrics.
+This document reflects the inspected ProfitPilot repository snapshot. Existing calculation, Money/FX, Seller Intelligence, Decision Tools, Platform Intelligence and Shopify integration remain authoritative where already implemented.
 
-## Data trust
-Marketplace fee values marked `example` remain assumptions. The UI must not label those values as official/current without source verification.
+## Current → target mapping
 
-## Platform Intelligence Pass — 2026-09-12
+| Target responsibility | Existing/current implementation | Status | Decision |
+|---|---|---|---|
+| Canonical calculation | `lib/calculator.ts`, `lib/calculation-engine.ts` | IMPLEMENTED | KEEP as single economic authority |
+| Money / FX | `lib/money.ts`, `lib/fx.ts` | IMPLEMENTED | KEEP |
+| Seller Intelligence | `components/SellerAnalyzer.tsx`, `lib/csv.ts` | IMPLEMENTED + EXTENDED | KEEP / extend with economic core |
+| What-If / Stress / Compare | `components/DecisionTools.tsx`, `lib/decision-tools.ts` | IMPLEMENTED + EXTENDED | KEEP / extend with shared economic decisions |
+| Raw source representation | `lib/commerce/types.ts` source refs | PARTIAL | EXTEND; durable storage remains blocked without persistence |
+| Normalization | Shopify client + CSV normalizer | PARTIAL | EXTEND through common canonical types |
+| Canonical commerce model | `lib/commerce/types.ts` | PARTIAL → EXTENDED | KEEP / add transaction, settlement, payout, inventory, ads, experiment entities |
+| Economic ledger | `lib/commerce/ledger.ts` | IMPLEMENTED FOUNDATION | Reuses calculation engine; no competing formulas |
+| Provenance | `lib/commerce/provenance.ts` | IMPLEMENTED FOUNDATION | Attach evidence/trust metadata |
+| Reconciliation | `lib/commerce/reconcile.ts`, `lib/commerce/reconciliation-engine.ts`, CSV reconciliation | IMPLEMENTED FOUNDATION / PARTIAL LIVE | Generic amount + settlement reconciliation; multi-source persistence remains future |
+| Platform adapters | `lib/commerce/platform-adapters.ts`, `lib/integrations/platform-adapter.ts`, registry | IMPLEMENTED ARCHITECTURAL CONTRACT | Shopify partial-live; other platforms capability-only/research-only |
+| Action engine | `lib/commerce/actions.ts`, `lib/commerce/economic-core.ts` | IMPLEMENTED FOUNDATION | Deterministic evidence-driven recommendation |
+| Experiments | `lib/commerce/experiments.ts`, Decision Tools local browser lifecycle | IMPLEMENTED LOCAL | Scenario vs observed outcome explicitly separated; durable cross-device history requires persistence |
+| Monitoring | `lib/commerce/monitoring.ts` | IMPLEMENTED PURE ENGINE | Alert derivation exists; scheduler/persistent history requires background infrastructure |
+| Learning | experiment outcome object + local storage | PARTIAL | Local learning record exists; cross-seller learning system intentionally not claimed |
+| Platform Intelligence | `lib/platform-intelligence.ts`, UI | IMPLEMENTED | KEEP separate from transaction economics |
+| Security | existing server-side Shopify integration | PARTIAL | Secrets remain server-side; durable credential lifecycle needs auth/database |
+| Observability | sync diagnostics + economic alert primitives | PARTIAL | Expand with production telemetry when worker/database infrastructure exists |
 
-The platform-intelligence layer is implemented separately from the calculator configuration. Verified research metadata covers the ten platforms in the supplied A–Z report. Existing calculator-supported platforms not covered by that report (for example Meesho and TikTok Shop) are explicitly marked unverified within the research layer rather than being falsely upgraded to verified.
+## Deliberate blockers
 
-No live API connectors were introduced. No universal fee schedule was manufactured from the report. The canonical calculation engine remains the authority for numerical profit results.
+1. No fake Amazon/eBay/Walmart/Etsy/Flipkart/Meesho/TikTok Shop live connectors are claimed. Their adapter/capability contracts exist, but official credentials, approvals and production data access are platform-dependent.
+2. The repository has no durable multi-merchant database/authentication layer. OAuth/token persistence and long-lived raw evidence therefore remain blocked rather than being faked.
+3. Full inventory cost-layer accounting is not claimed. Current COGS remains explicit and model-dependent.
+4. Background scheduling, durable monitoring history and cross-device experiment history require persistence/worker infrastructure.
 
-## Platform Intelligence implementation pass — 2026-09-12
+## Safety invariants
 
-Implemented the researched Platform Intelligence layer without creating a second application or replacing the calculation engine.
-
-- Centralized `PlatformFact` schema and research registry in `lib/platform-intelligence.ts`.
-- Added active capability coverage for all ten research platforms from the supplied A–Z report.
-- Added explicit lifecycle notices for renamed/discontinued items with dates.
-- Added scoped economic facts without pretending unpublished/category-specific values are universal.
-- Added free `/platform-intelligence` hub with search, family filter, economic-only filter, source links and lifecycle watch.
-- Added full A–Z research link from the homepage and Decision Tools.
-- Kept Meesho and TikTok Shop calculator support separate from research verification.
-- Decision Tools now surfaces active capability counts, economic facts and research boundaries.
-- Added automated tests for platform coverage, lifecycle data, source integrity and alias handling.
-
-## Live Data Vertical Slice — 2026-09-12
-
-### CURRENT
-- No production database/user-auth persistence layer exists in the supplied ZIP.
-- No marketplace OAuth connector existed before this pass.
-- Only existing FX/health API routes were present.
-- Seller intelligence remained primarily manual/CSV-driven.
-
-### NEW SAFE INTEGRATION POINTS
-- `lib/commerce/*` for canonical commerce types and conservative reconciliation.
-- `lib/integrations/shopify/*` for provider-specific auth/client/runtime code.
-- `app/api/shopify/*` for server-side HTTP boundaries.
-- `/connections` for seller-facing connection/sync UX.
-
-### KNOWN LIMITATION
-A real OAuth exchange can occur only after Shopify app credentials are configured, but token persistence is intentionally BLOCKED until a database/user-auth layer is added. This prevents insecure token storage in an ephemeral serverless filesystem or browser storage.
-
-### DESIRED STATE
-Browser → authenticated ProfitPilot user → durable `MarketplaceConnection` → encrypted/managed secrets → sync jobs → raw source records → canonical commerce data → existing calculation engine → Seller Intelligence.
-
-### MIGRATION PATH
-Add a database + merchant identity layer, then implement adapters for `MarketplaceConnection`, `SyncJob`, `WebhookEvent`, raw-source references and token refresh. The current Shopify provider client and normalization code can then remain provider-specific while persistence becomes infrastructure-specific.
+- One economic calculation authority.
+- Native operating economics stay distinct from reporting-currency conversions.
+- Settlement variance is independent from profit.
+- Unmapped monetary amounts remain visible.
+- Counts and money values remain different types.
+- Research facts cannot silently become seller-specific economics.
+- Fake live integrations and fake evidence are forbidden.
